@@ -262,3 +262,6 @@
 
 ## Feature: CLF-C02 Beginner-Friendly Questions
 - [x] Replace all 65 CLF-C02 questions with easier, foundational-level questions appropriate for the entry-level Cloud Practitioner certification (basic service identification, billing, cloud concepts, security fundamentals) — 73 questions in pool, 65 randomly selected per exam, ORDER BY RAND() added
+
+## Bug Fix: Correct Answer Distribution (CLF-C02 and SAA-C03)
+- [x] Shuffle option order for all questions so correct answers are evenly distributed across A, B, C, and D — CLF-C02: {A:19, B:18, C:18, D:18}, SAA-C03: {A:17, B:16, C:16, D:16}
