@@ -171,8 +171,26 @@ export default function Home() {
 
       {/* Footer */}
       <footer className="border-t border-blue-800/30 bg-slate-900/50 py-8 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto text-center text-blue-300">
+        <div className="max-w-7xl mx-auto text-center text-blue-300 space-y-3">
           <p>&copy; 2026 AWS AI Tutor Pro. All rights reserved.</p>
+          <p className="text-sm text-blue-400">
+            Built by Abdullahi Wadi &mdash;{" "}
+            <a
+              href="mailto:abdulahiyerow@gmail.com"
+              className="underline hover:text-white transition-colors"
+            >
+              abdulahiyerow@gmail.com
+            </a>
+            {" "}&middot;{" "}
+            <a
+              href="https://www.linkedin.com/in/abdullahi-wadi"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline hover:text-white transition-colors"
+            >
+              LinkedIn
+            </a>
+          </p>
         </div>
       </footer>
     </div>

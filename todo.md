@@ -232,3 +232,6 @@
 ## Bug Fix: Exam Results "Session Not Found"
 - [x] Fix results page showing "Exam session not found" — added proper error/loading states to ExamResults.tsx with retry:1
 - [x] Add proper error UI to ExamResults page instead of infinite loading
+
+## Feature: Contact Footer
+- [x] Add email (abdulahiyerow@gmail.com) and LinkedIn (linkedin.com/in/abdullahi-wadi) to site footer — added to Home.tsx footer and DashboardLayout sidebar footer

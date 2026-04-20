@@ -207,6 +207,25 @@ function DashboardLayoutContent({
           </SidebarContent>
 
           <SidebarFooter className="p-3">
+            <div className="px-1 pb-2 group-data-[collapsible=icon]:hidden">
+              <p className="text-xs text-muted-foreground">
+                <a
+                  href="mailto:abdulahiyerow@gmail.com"
+                  className="hover:text-foreground transition-colors"
+                >
+                  abdulahiyerow@gmail.com
+                </a>
+                {" "}·{" "}
+                <a
+                  href="https://www.linkedin.com/in/abdullahi-wadi"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-foreground transition-colors"
+                >
+                  LinkedIn
+                </a>
+              </p>
+            </div>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button className="flex items-center gap-3 rounded-lg px-1 py-1 hover:bg-accent/50 transition-colors w-full text-left group-data-[collapsible=icon]:justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-ring">
