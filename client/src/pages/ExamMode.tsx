@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { trpc } from "@/lib/trpc";
-import { Loader2, ArrowLeft, AlertCircle, Flag, ChevronLeft, ChevronRight, LayoutGrid } from "lucide-react";
+import { Loader2, ArrowLeft, AlertCircle, Flag, ChevronLeft, ChevronRight, LayoutGrid, AlertTriangle, CheckCircle2 } from "lucide-react";
 
 interface ExamQuestion {
   id: number;
@@ -29,6 +29,7 @@ export default function ExamMode() {
   const [isNavigating, setIsNavigating] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showNavigator, setShowNavigator] = useState(false);
+  const [showSubmitDialog, setShowSubmitDialog] = useState(false);
   const timerEverStartedRef = useRef(false);
 
   const utils = trpc.useUtils();
@@ -49,10 +50,10 @@ export default function ExamMode() {
     return () => clearInterval(timer);
   }, [examStarted, timeLeft]);
 
-  // Auto-submit when time runs out
+  // Auto-submit when time runs out (no dialog — time's up)
   useEffect(() => {
     if (timeLeft === 0 && examStarted && sessionId && timerEverStartedRef.current && !isSubmitting) {
-      handleSubmitExam();
+      doSubmitExam();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [timeLeft]);
@@ -115,7 +116,6 @@ export default function ExamMode() {
   };
 
   const handleJumpTo = (idx: number) => {
-    // Save current answer before jumping
     const currentQuestion = questions[currentQuestionIdx];
     if (currentQuestion && sessionId) {
       submitAnswerMutation.mutate({
@@ -139,8 +139,16 @@ export default function ExamMode() {
     });
   };
 
-  const handleSubmitExam = async () => {
+  // Called when user clicks "Submit Exam" — opens confirmation dialog
+  const handleSubmitClick = () => {
+    setShowNavigator(false);
+    setShowSubmitDialog(true);
+  };
+
+  // The actual submission — called from the dialog after confirmation
+  const doSubmitExam = async () => {
     if (!sessionId || isSubmitting) return;
+    setShowSubmitDialog(false);
     setIsSubmitting(true);
     try {
       const currentQuestion = questions[currentQuestionIdx];
@@ -202,6 +210,98 @@ export default function ExamMode() {
   const answeredCount = Object.keys(selectedAnswers).filter(k => (selectedAnswers[Number(k)] || []).length > 0).length;
   const skippedCount = questions.length - answeredCount;
   const isFlagged = currentQuestion ? flaggedQuestions.has(currentQuestion.id) : false;
+
+  // List of unanswered question numbers (1-indexed) for the dialog
+  const unansweredNumbers = questions
+    .map((q, idx) => ({ idx, id: q.id }))
+    .filter(({ id }) => (selectedAnswers[id] || []).length === 0)
+    .map(({ idx }) => idx + 1);
+
+  // ─── Submit confirmation dialog ──────────────────────────────────────────────
+  const SubmitDialog = () => (
+    <div
+      className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4"
+      onClick={() => setShowSubmitDialog(false)}
+    >
+      <div
+        className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl p-8 max-w-md w-full"
+        onClick={e => e.stopPropagation()}
+      >
+        {unansweredNumbers.length === 0 ? (
+          /* All answered — simple confirm */
+          <>
+            <div className="flex items-center gap-3 mb-4">
+              <div className="bg-green-100 dark:bg-green-900/40 p-3 rounded-full">
+                <CheckCircle2 className="w-6 h-6 text-green-600 dark:text-green-400" />
+              </div>
+              <h3 className="text-xl font-bold text-slate-900 dark:text-white">Submit Exam?</h3>
+            </div>
+            <p className="text-slate-600 dark:text-slate-400 mb-6">
+              You have answered all <strong>{questions.length} questions</strong>. Once submitted, you cannot change your answers.
+            </p>
+          </>
+        ) : (
+          /* Has unanswered questions — show warning */
+          <>
+            <div className="flex items-center gap-3 mb-4">
+              <div className="bg-amber-100 dark:bg-amber-900/40 p-3 rounded-full">
+                <AlertTriangle className="w-6 h-6 text-amber-600 dark:text-amber-400" />
+              </div>
+              <h3 className="text-xl font-bold text-slate-900 dark:text-white">Unanswered Questions</h3>
+            </div>
+            <p className="text-slate-600 dark:text-slate-400 mb-4">
+              You have <strong className="text-amber-600 dark:text-amber-400">{unansweredNumbers.length} unanswered question{unansweredNumbers.length > 1 ? "s" : ""}</strong> out of {questions.length}. Unanswered questions will be marked as incorrect.
+            </p>
+
+            {/* List of unanswered question numbers */}
+            <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4 mb-6">
+              <p className="text-xs font-semibold text-amber-700 dark:text-amber-400 mb-2 uppercase tracking-wide">
+                Unanswered Questions
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {unansweredNumbers.map(n => (
+                  <button
+                    key={n}
+                    onClick={() => {
+                      setShowSubmitDialog(false);
+                      setCurrentQuestionIdx(n - 1);
+                    }}
+                    className="w-8 h-8 rounded text-xs font-bold bg-white dark:bg-slate-700 border-2 border-amber-400 text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/40 transition-colors"
+                  >
+                    {n}
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs text-amber-600 dark:text-amber-400 mt-2">
+                Click a number to jump to that question.
+              </p>
+            </div>
+          </>
+        )}
+
+        <div className="flex gap-3">
+          <Button
+            variant="outline"
+            className="flex-1"
+            onClick={() => setShowSubmitDialog(false)}
+          >
+            {unansweredNumbers.length > 0 ? "Go Back & Answer" : "Cancel"}
+          </Button>
+          <Button
+            className={`flex-1 ${unansweredNumbers.length > 0 ? "bg-amber-500 hover:bg-amber-600 text-white" : ""}`}
+            onClick={doSubmitExam}
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? (
+              <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Submitting...</>
+            ) : (
+              unansweredNumbers.length > 0 ? "Submit Anyway" : "Submit Exam"
+            )}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
 
   // ─── Question navigator panel ────────────────────────────────────────────────
   const NavigatorPanel = () => (
@@ -271,7 +371,7 @@ export default function ExamMode() {
           <p className="text-sm text-slate-600 dark:text-slate-400">
             {answeredCount}/{questions.length} answered
           </p>
-          <Button onClick={handleSubmitExam} disabled={isSubmitting} size="sm">
+          <Button onClick={handleSubmitClick} disabled={isSubmitting} size="sm">
             {isSubmitting ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Submitting...</> : "Submit Exam"}
           </Button>
         </div>
@@ -283,6 +383,7 @@ export default function ExamMode() {
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900 p-4">
       {showNavigator && <NavigatorPanel />}
+      {showSubmitDialog && <SubmitDialog />}
 
       {/* Timer Bar */}
       <div className={`fixed top-0 left-0 right-0 border-b shadow-sm p-3 z-10 ${timeWarning ? "bg-red-50 dark:bg-red-900" : "bg-white dark:bg-slate-800"}`}>
@@ -377,7 +478,7 @@ export default function ExamMode() {
 
               <div className="flex gap-2">
                 {currentQuestionIdx === questions.length - 1 ? (
-                  <Button onClick={handleSubmitExam} disabled={isSubmitting}>
+                  <Button onClick={handleSubmitClick} disabled={isSubmitting}>
                     {isSubmitting ? (
                       <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Submitting...</>
                     ) : (

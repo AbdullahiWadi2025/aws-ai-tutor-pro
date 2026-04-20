@@ -255,3 +255,7 @@
 
 ## Bug Fix: Exam Review Page Blank
 - [x] Fix exam review page showing blank/no questions — fixed getExamSessionsByUser to only return completed exam-mode sessions (mode='exam', score IS NOT NULL); fixed getReview to use user_answers as fallback when exam_session_questions is empty (legacy sessions), and all cert questions as last resort
+
+## Feature: Unanswered Questions Warning on Submit
+- [x] Show unanswered question count and list in the submit confirmation dialog in ExamMode
+- [x] Allow user to go back and answer remaining questions or proceed with submission anyway
