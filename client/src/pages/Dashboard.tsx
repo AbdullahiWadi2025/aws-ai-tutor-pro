@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useLocation } from "wouter";
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
-import { BookOpen, Zap, Brain, BarChart3, LogOut } from "lucide-react";
+import { BookOpen, Zap, Brain, BarChart3, LogOut, Settings } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 
 export default function Dashboard() {
@@ -43,6 +43,12 @@ export default function Dashboard() {
           </div>
           <div className="flex items-center gap-4">
             <span className="text-slate-600 dark:text-slate-300">{user?.name || user?.email}</span>
+            {user?.role === 'admin' && (
+              <Button variant="outline" size="sm" onClick={() => navigate("/admin")}>
+                <Settings className="w-4 h-4 mr-2" />
+                Admin
+              </Button>
+            )}
             <Button variant="outline" size="sm" onClick={handleLogout}>
               <LogOut className="w-4 h-4 mr-2" />
               Logout

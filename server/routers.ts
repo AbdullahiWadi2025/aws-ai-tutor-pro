@@ -5,6 +5,7 @@ import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import { z } from "zod";
 import { invokeLLM } from "./_core/llm";
 import * as db from "./db";
+import { adminRouter } from "./admin";
 
 export const appRouter = router({
   system: systemRouter,
@@ -188,6 +189,9 @@ export const appRouter = router({
         };
       }),
   }),
+
+  // Admin procedures
+  admin: adminRouter,
 });
 
 export type AppRouter = typeof appRouter;

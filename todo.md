@@ -97,6 +97,15 @@
 - [ ] Final UI polish and accessibility review
 - [x] Create checkpoint before delivery
 
+## Admin Dashboard (NEW)
+- [x] Create admin procedures in tRPC (getAllUsers, getExamStats, getUserDetails, getTopicAnalytics)
+- [x] Build admin dashboard page with user management table
+- [x] Add exam statistics and analytics views
+- [x] Implement role-based access control (admin only)
+- [x] Create user detail view with individual exam history
+- [x] Add filters and sorting to admin tables
+- [x] Create admin navigation in sidebar
+
 ## Completed
 - [x] Project initialized with database and user authentication scaffolding
 - [x] Complete database schema with all required tables

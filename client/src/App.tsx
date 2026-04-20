@@ -11,6 +11,7 @@ import PracticeMode from "./pages/PracticeMode";
 import ExamResults from "./pages/ExamResults";
 import AITutor from "./pages/AITutor";
 import Progress from "./pages/Progress";
+import AdminDashboard from "./pages/AdminDashboard";
 import { useAuth } from "./_core/hooks/useAuth";
 import { Loader2 } from "lucide-react";
 
@@ -36,6 +37,7 @@ function Router() {
           <Route path="/exam/:sessionId/results" component={ExamResults} />
           <Route path="/ai-tutor" component={AITutor} />
           <Route path="/progress" component={Progress} />
+          <Route path="/admin" component={AdminDashboard} />
         </>
       )}
       <Route path="/404" component={NotFound} />
