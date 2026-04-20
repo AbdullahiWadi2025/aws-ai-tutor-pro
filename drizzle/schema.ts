@@ -194,3 +194,64 @@ export const studyRecommendations = mysqlTable("study_recommendations", {
 
 export type StudyRecommendation = typeof studyRecommendations.$inferSelect;
 export type InsertStudyRecommendation = typeof studyRecommendations.$inferInsert;
+
+
+// Beta Launch Tables
+
+// Trial tracking - add to user-subscription relationship
+export const userTrials = mysqlTable("user_trials", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("user_id").notNull().unique(),
+  trialStartedAt: timestamp("trial_started_at").defaultNow().notNull(),
+  trialEndsAt: timestamp("trial_ends_at").notNull(),
+  isActive: boolean("is_active").default(true).notNull(),
+  source: varchar("source", { length: 50 }).default("signup").notNull(), // signup, beta_code, admin
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type UserTrial = typeof userTrials.$inferSelect;
+export type InsertUserTrial = typeof userTrials.$inferInsert;
+
+// Beta access codes
+export const betaCodes = mysqlTable("beta_codes", {
+  id: int("id").autoincrement().primaryKey(),
+  code: varchar("code", { length: 64 }).notNull().unique(),
+  description: text("description"),
+  maxUses: int("max_uses").default(1).notNull(),
+  usedCount: int("used_count").default(0).notNull(),
+  trialDays: int("trial_days").default(14).notNull(),
+  expiresAt: timestamp("expires_at"),
+  isActive: boolean("is_active").default(true).notNull(),
+  createdBy: int("created_by"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type BetaCode = typeof betaCodes.$inferSelect;
+export type InsertBetaCode = typeof betaCodes.$inferInsert;
+
+// Beta code redemptions
+export const betaCodeRedemptions = mysqlTable("beta_code_redemptions", {
+  id: int("id").autoincrement().primaryKey(),
+  betaCodeId: int("beta_code_id").notNull(),
+  userId: int("user_id").notNull(),
+  redeemedAt: timestamp("redeemed_at").defaultNow().notNull(),
+});
+
+export type BetaCodeRedemption = typeof betaCodeRedemptions.$inferSelect;
+export type InsertBetaCodeRedemption = typeof betaCodeRedemptions.$inferInsert;
+
+// User feedback
+export const userFeedback = mysqlTable("user_feedback", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("user_id"),
+  category: mysqlEnum("category", ["bug", "feature_request", "general", "praise"]).default("general").notNull(),
+  rating: int("rating"), // 1-5 stars, nullable
+  message: text("message").notNull(),
+  pageUrl: varchar("page_url", { length: 500 }),
+  userAgent: text("user_agent"),
+  status: mysqlEnum("status", ["new", "reviewed", "resolved", "archived"]).default("new").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type UserFeedback = typeof userFeedback.$inferSelect;
+export type InsertUserFeedback = typeof userFeedback.$inferInsert;

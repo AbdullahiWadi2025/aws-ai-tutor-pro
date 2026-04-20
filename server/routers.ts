@@ -10,11 +10,23 @@ import { stripeRouter } from "./stripe-router";
 import { gamificationRouter } from "./gamification-router";
 import { requirePremiumAccess, canAccessFeature } from "./premium-access";
 import { checkAndUnlockAchievements } from "./badge-logic";
+import { betaRouter } from "./beta-router";
 
 export const appRouter = router({
   system: systemRouter,
   auth: router({
-    me: publicProcedure.query(opts => opts.ctx.user),
+    me: publicProcedure.query(async (opts) => {
+      const user = opts.ctx.user;
+      // Auto-start trial for authenticated users (idempotent)
+      if (user && user.id) {
+        try {
+          await db.startTrialForUser(user.id, 14, "signup");
+        } catch (err) {
+          console.error("[Trial] Failed to auto-start trial:", err);
+        }
+      }
+      return user;
+    }),
     logout: publicProcedure.mutation(({ ctx }) => {
       const cookieOptions = getSessionCookieOptions(ctx.req);
       ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
@@ -103,7 +115,10 @@ export const appRouter = router({
       .mutation(async ({ input, ctx }) => {
         const userAnswers = await db.getUserAnswersBySession(input.sessionId);
         const correctCount = userAnswers.filter(a => a.isCorrect).length;
-        const score = (correctCount / 65) * 100;
+        const totalAnswered = userAnswers.length;
+        // Use total answered questions (minimum 1 to avoid divide-by-zero)
+        const totalForScoring = Math.max(totalAnswered, 1);
+        const score = Math.min(100, (correctCount / totalForScoring) * 100);
         const isPassed = score >= 70; // AWS exams require 70% to pass
         
         await db.updateExamSession(input.sessionId, {
@@ -111,7 +126,7 @@ export const appRouter = router({
           correctAnswers: correctCount,
           timeTaken: input.timeTaken,
           isPassed,
-          questionsAttempted: userAnswers.length,
+          questionsAttempted: totalAnswered,
         });
         
         // Check and unlock achievements
@@ -129,7 +144,7 @@ export const appRouter = router({
           score: Math.round(score),
           isPassed,
           correctAnswers: correctCount,
-          totalQuestions: 65,
+          totalQuestions: totalAnswered,
         };
       }),
 
@@ -222,6 +237,7 @@ export const appRouter = router({
 
   // Gamification procedures
   gamification: gamificationRouter,
+  beta: betaRouter,
 });
 
 export type AppRouter = typeof appRouter;

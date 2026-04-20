@@ -475,3 +475,219 @@ export async function generateRecommendations(userId: number, certification: "SA
     });
   });
 }
+
+
+// ========== Beta Launch Helpers ==========
+
+import { userTrials, betaCodes, betaCodeRedemptions, userFeedback } from "../drizzle/schema";
+
+const TRIAL_DAYS_DEFAULT = 14;
+
+/**
+ * Get user trial status
+ */
+export async function getUserTrial(userId: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  
+  const result = await db
+    .select()
+    .from(userTrials)
+    .where(eq(userTrials.userId, userId))
+    .limit(1);
+  
+  return result.length > 0 ? result[0] : undefined;
+}
+
+/**
+ * Check if user has an active trial
+ */
+export async function hasActiveTrial(userId: number): Promise<boolean> {
+  const trial = await getUserTrial(userId);
+  if (!trial) return false;
+  
+  const now = new Date();
+  return trial.isActive && new Date(trial.trialEndsAt) > now;
+}
+
+/**
+ * Start a trial for a user (idempotent - returns existing if already started)
+ */
+export async function startTrialForUser(
+  userId: number,
+  days: number = TRIAL_DAYS_DEFAULT,
+  source: string = "signup"
+) {
+  const db = await getDb();
+  if (!db) return undefined;
+  
+  const existing = await getUserTrial(userId);
+  if (existing) return existing;
+  
+  const trialEndsAt = new Date();
+  trialEndsAt.setDate(trialEndsAt.getDate() + days);
+  
+  await db.insert(userTrials).values({
+    userId,
+    trialEndsAt,
+    isActive: true,
+    source,
+  });
+  
+  return await getUserTrial(userId);
+}
+
+/**
+ * Extend a user's trial by N days (used when redeeming beta code)
+ */
+export async function extendUserTrial(userId: number, additionalDays: number) {
+  const db = await getDb();
+  if (!db) return;
+  
+  const existing = await getUserTrial(userId);
+  if (!existing) {
+    await startTrialForUser(userId, additionalDays, "beta_code");
+    return;
+  }
+  
+  const newEndDate = new Date(existing.trialEndsAt);
+  newEndDate.setDate(newEndDate.getDate() + additionalDays);
+  
+  await db
+    .update(userTrials)
+    .set({ trialEndsAt: newEndDate, isActive: true })
+    .where(eq(userTrials.userId, userId));
+}
+
+// ========== Beta Codes ==========
+
+export async function getBetaCodeByCode(code: string) {
+  const db = await getDb();
+  if (!db) return undefined;
+  
+  const result = await db
+    .select()
+    .from(betaCodes)
+    .where(eq(betaCodes.code, code))
+    .limit(1);
+  
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function getAllBetaCodes() {
+  const db = await getDb();
+  if (!db) return [];
+  
+  return await db.select().from(betaCodes);
+}
+
+export async function createBetaCode(data: {
+  code: string;
+  description?: string;
+  maxUses?: number;
+  trialDays?: number;
+  expiresAt?: Date;
+  createdBy?: number;
+}) {
+  const db = await getDb();
+  if (!db) return undefined;
+  
+  await db.insert(betaCodes).values({
+    code: data.code,
+    description: data.description,
+    maxUses: data.maxUses ?? 1,
+    trialDays: data.trialDays ?? TRIAL_DAYS_DEFAULT,
+    expiresAt: data.expiresAt,
+    createdBy: data.createdBy,
+  });
+  
+  return await getBetaCodeByCode(data.code);
+}
+
+export async function incrementBetaCodeUsage(codeId: number) {
+  const db = await getDb();
+  if (!db) return;
+  
+  const result = await db
+    .select()
+    .from(betaCodes)
+    .where(eq(betaCodes.id, codeId))
+    .limit(1);
+  
+  if (result.length === 0) return;
+  
+  const current = result[0];
+  await db
+    .update(betaCodes)
+    .set({ usedCount: current.usedCount + 1 })
+    .where(eq(betaCodes.id, codeId));
+}
+
+export async function hasUserRedeemedCode(userId: number, betaCodeId: number): Promise<boolean> {
+  const db = await getDb();
+  if (!db) return false;
+  
+  const result = await db
+    .select()
+    .from(betaCodeRedemptions)
+    .where(and(
+      eq(betaCodeRedemptions.userId, userId),
+      eq(betaCodeRedemptions.betaCodeId, betaCodeId)
+    ))
+    .limit(1);
+  
+  return result.length > 0;
+}
+
+export async function recordBetaCodeRedemption(userId: number, betaCodeId: number) {
+  const db = await getDb();
+  if (!db) return;
+  
+  await db.insert(betaCodeRedemptions).values({
+    userId,
+    betaCodeId,
+  });
+}
+
+// ========== User Feedback ==========
+
+export async function createUserFeedback(data: {
+  userId?: number;
+  category: "bug" | "feature_request" | "general" | "praise";
+  rating?: number;
+  message: string;
+  pageUrl?: string;
+  userAgent?: string;
+}) {
+  const db = await getDb();
+  if (!db) return;
+  
+  await db.insert(userFeedback).values({
+    userId: data.userId,
+    category: data.category,
+    rating: data.rating,
+    message: data.message,
+    pageUrl: data.pageUrl,
+    userAgent: data.userAgent,
+  });
+}
+
+export async function getAllFeedback() {
+  const db = await getDb();
+  if (!db) return [];
+  
+  return await db.select().from(userFeedback);
+}
+
+export async function updateFeedbackStatus(
+  feedbackId: number,
+  status: "new" | "reviewed" | "resolved" | "archived"
+) {
+  const db = await getDb();
+  if (!db) return;
+  
+  await db
+    .update(userFeedback)
+    .set({ status })
+    .where(eq(userFeedback.id, feedbackId));
+}

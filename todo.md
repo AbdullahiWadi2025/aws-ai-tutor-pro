@@ -173,3 +173,17 @@
 ## Bug Fixes
 - [x] Fix Stripe checkout session creation error (created real Stripe products and updated price IDs)
 - [x] Test checkout flow end-to-end (37 tests passing, real Stripe price IDs configured)
+
+## Beta Launch Features
+- [x] Add database schema: user_trials, beta_codes, beta_code_redemptions, user_feedback tables
+- [x] Implement 14-day free trial auto-activation on first auth.me fetch after login (lazy activation — runs on first authenticated request)
+- [x] Update premium access check to include active trial users
+- [x] Build beta code generation, validation, and redemption
+- [x] Create FeedbackWidget component (floating button, dialog)
+- [x] Create TrialBanner showing days remaining + redeem code button
+- [x] Add BetaAdmin page to generate/manage beta codes and view feedback
+- [x] Link BetaAdmin from main AdminDashboard
+- [x] Seed 4 demo beta codes (LAUNCH2026, BETATESTER, REDDIT14, AWSPREP)
+- [x] Write tests for trial system and beta codes (15 new tests)
+- [x] All 52 tests passing
+- [x] Fixed exam score calculation bug (was dividing by hardcoded 65)

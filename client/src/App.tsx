@@ -14,8 +14,11 @@ import Progress from "./pages/Progress";
 import AdminDashboard from "./pages/AdminDashboard";
 import Pricing from "./pages/Pricing";
 import SubscriptionManagement from "./pages/SubscriptionManagement";
+import BetaAdmin from "./pages/BetaAdmin";
 import { useAuth } from "./_core/hooks/useAuth";
 import { Loader2 } from "lucide-react";
+import { FeedbackWidget } from "./components/FeedbackWidget";
+import { TrialBanner } from "./components/TrialBanner";
 
 function Router() {
   const { isAuthenticated, loading } = useAuth();
@@ -29,7 +32,9 @@ function Router() {
   }
 
   return (
-    <Switch>
+    <>
+      {isAuthenticated && <TrialBanner />}
+      <Switch>
       <Route path="/" component={Home} />
       <Route path="/pricing" component={Pricing} />
       {isAuthenticated && (
@@ -42,11 +47,14 @@ function Router() {
           <Route path="/progress" component={Progress} />
           <Route path="/subscription" component={SubscriptionManagement} />
           <Route path="/admin" component={AdminDashboard} />
+          <Route path="/admin/beta" component={BetaAdmin} />
         </>
       )}
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>
+    {isAuthenticated && <FeedbackWidget />}
+    </>
   );
 }
 

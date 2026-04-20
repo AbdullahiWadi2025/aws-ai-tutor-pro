@@ -2,11 +2,16 @@ import { TRPCError } from "@trpc/server";
 import * as db from "./db";
 
 /**
- * Check if user has premium access
+ * Check if user has premium access (via subscription or active trial)
  */
 export async function checkPremiumAccess(userId: number): Promise<boolean> {
+  // Check paid subscription first
   const subscription = await db.getUserSubscription(userId);
-  return subscription?.status === "active";
+  if (subscription?.status === "active") return true;
+
+  // Check active trial
+  const hasTrial = await db.hasActiveTrial(userId);
+  return hasTrial;
 }
 
 /**
@@ -17,21 +22,48 @@ export async function requirePremiumAccess(userId: number): Promise<void> {
   if (!hasPremium) {
     throw new TRPCError({
       code: "FORBIDDEN",
-      message: "This feature requires a premium subscription. Please upgrade to access.",
+      message: "This feature requires a premium subscription or active trial. Please upgrade or start your free trial.",
     });
   }
 }
 
 /**
- * Get subscription status for user
+ * Get detailed subscription and trial status for user
  */
 export async function getSubscriptionStatus(userId: number) {
   const subscription = await db.getUserSubscription(userId);
+  const trial = await db.getUserTrial(userId);
+  const now = new Date();
+  
+  const hasActiveSubscription = subscription?.status === "active";
+  const hasActiveTrial = Boolean(trial?.isActive && new Date(trial.trialEndsAt) > now);
+  
+  let accessType: "subscription" | "trial" | "free" = "free";
+  let expiresAt: Date | null = null;
+  let planName = "Free";
+  
+  if (hasActiveSubscription) {
+    accessType = "subscription";
+    expiresAt = subscription.currentPeriodEnd;
+    planName = "Premium";
+  } else if (hasActiveTrial && trial) {
+    accessType = "trial";
+    expiresAt = trial.trialEndsAt;
+    planName = "Trial (Premium)";
+  }
+  
+  const trialDaysRemaining = hasActiveTrial && trial
+    ? Math.ceil((new Date(trial.trialEndsAt).getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+    : 0;
+  
   return {
-    isPremium: subscription?.status === "active",
-    status: subscription?.status || "inactive",
-    planName: subscription?.planId ? "Premium" : "Free",
-    expiresAt: subscription?.currentPeriodEnd,
+    isPremium: Boolean(hasActiveSubscription || hasActiveTrial),
+    accessType,
+    status: subscription?.status || (hasActiveTrial ? "trial" : "inactive"),
+    planName,
+    expiresAt,
+    trialDaysRemaining,
+    hasEverHadTrial: !!trial,
   };
 }
 
@@ -42,30 +74,25 @@ export async function canAccessFeature(
   userId: number,
   feature: "exam" | "practice" | "ai_tutor" | "unlimited_practice"
 ): Promise<boolean> {
-  const subscription = await db.getUserSubscription(userId);
-  const isPremium = subscription?.status === "active";
+  const hasPremium = await checkPremiumAccess(userId);
 
   // Feature access rules
   switch (feature) {
     case "exam":
-      // Exams require premium
-      return isPremium;
+      return hasPremium;
     case "practice":
-      // Practice available to all
-      return true;
+      return true; // Practice available to all
     case "ai_tutor":
-      // AI tutor requires premium
-      return isPremium;
+      return hasPremium;
     case "unlimited_practice":
-      // Unlimited practice requires premium
-      return isPremium;
+      return hasPremium;
     default:
       return false;
   }
 }
 
 /**
- * Get feature limits based on subscription
+ * Get feature limits based on subscription/trial
  */
 export async function getFeatureLimits(userId: number) {
   const isPremium = await checkPremiumAccess(userId);
