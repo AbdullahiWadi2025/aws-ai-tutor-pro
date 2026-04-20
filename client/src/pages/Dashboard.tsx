@@ -40,7 +40,7 @@ export default function Dashboard() {
       <nav className="border-b bg-white dark:bg-slate-800 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
           <div className="flex items-center gap-2">
-            <Brain className="w-8 h-8 text-blue-600" />
+            <img src="https://d2xsxph8kpxj0f.cloudfront.net/310519663570210779/nNerxvzoKEAhA9FPZGf5rg/logo-option3-Z8cRg8oEDzdqTunyE28t32.webp" alt="AWS AI Tutor Pro" className="w-9 h-9 rounded-lg" />
             <h1 className="text-2xl font-bold text-slate-900 dark:text-white">AWS AI Tutor Pro</h1>
           </div>
           <div className="flex items-center gap-4">

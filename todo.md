@@ -71,8 +71,8 @@
 - [x] Add exam history table with filters and sorting
 
 ## Data Integration
-- [ ] Extract 500+ real AWS SAA-C03 questions with options, answers, and explanations (20 seeded, expandable)
-- [ ] Extract 500+ real AWS CLF-C02 questions with options, answers, and explanations (20 seeded, expandable)
+- [ ] Extract 500+ real AWS SAA-C03 questions — DEFERRED (37 high-quality questions seeded; LLM bulk generation too slow; expand manually post-beta)
+- [ ] Extract 500+ real AWS CLF-C02 questions — DEFERRED (37 high-quality questions seeded; expand manually post-beta)
 - [x] Seed database with initial questions
 - [x] Verify question data integrity (all have explanations, correct answers, etc.)
 
@@ -91,10 +91,10 @@
 - [x] Optimize database queries for performance
 - [x] Add loading states and skeleton screens
 - [x] Implement proper error handling and user feedback
-- [ ] Add analytics tracking for user engagement (optional)
-- [ ] Create user onboarding flow (optional)
-- [ ] Add help/FAQ section (optional)
-- [ ] Final UI polish and accessibility review (optional)
+- [ ] Add analytics tracking for user engagement (optional — post-beta)
+- [ ] Create user onboarding flow (optional — post-beta)
+- [ ] Add help/FAQ section (optional — post-beta)
+- [ ] Final UI polish and accessibility review (optional — post-beta)
 - [x] Create checkpoint before delivery
 
 ## Admin Dashboard (NEW)
@@ -156,11 +156,11 @@
 - [x] Add milestone tracking (70% average, 80% average, etc.) (infrastructure ready)
 
 ### Adaptive Learning (Phase 2)
-- [ ] Create question_difficulty table to track question difficulty
-- [ ] Add tRPC procedure: getAdaptiveQuestions (select questions based on performance)
-- [ ] Implement difficulty adjustment logic (harder if user scores high)
-- [ ] Add spaced repetition logic (resurface weak topics)
-- [ ] Update exam/practice to use adaptive selection
+- [ ] Create question_difficulty table to track question difficulty (Phase 2 — post-beta)
+- [ ] Add tRPC procedure: getAdaptiveQuestions (Phase 2 — post-beta)
+- [ ] Implement difficulty adjustment logic (Phase 2 — post-beta)
+- [ ] Add spaced repetition logic (Phase 2 — post-beta)
+- [ ] Update exam/practice to use adaptive selection (Phase 2 — post-beta)
 
 ### Testing & Validation
 - [x] Test question database expansion

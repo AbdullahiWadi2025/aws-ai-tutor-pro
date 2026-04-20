@@ -19,9 +19,7 @@ export default function Home() {
       <nav className="border-b border-blue-800/30 bg-slate-900/50 backdrop-blur-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
           <div className="flex items-center gap-2">
-            <div className="w-10 h-10 bg-gradient-to-br from-blue-400 to-blue-600 rounded-lg flex items-center justify-center">
-              <BookOpen className="w-6 h-6 text-white" />
-            </div>
+            <img src="https://d2xsxph8kpxj0f.cloudfront.net/310519663570210779/nNerxvzoKEAhA9FPZGf5rg/logo-option3-Z8cRg8oEDzdqTunyE28t32.webp" alt="AWS AI Tutor Pro" className="w-10 h-10 rounded-lg" />
             <span className="text-xl font-bold text-white">AWS AI Tutor Pro</span>
           </div>
           <a href={getLoginUrl()}>
