@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users } from "../drizzle/schema";
+import { InsertUser, users, awsQuestions, examSessions, userProgress, topicPerformance, userAnswers } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -89,4 +89,165 @@ export async function getUserByOpenId(openId: string) {
   return result.length > 0 ? result[0] : undefined;
 }
 
-// TODO: add feature queries here as your schema grows.
+// AWS Questions queries
+export async function getQuestionsByCertification(certification: "SAA-C03" | "CLF-C02", limit: number = 65) {
+  const db = await getDb();
+  if (!db) return [];
+  
+  const result = await db
+    .select()
+    .from(awsQuestions)
+    .where(eq(awsQuestions.certification, certification))
+    .limit(limit);
+  
+  return result;
+}
+
+export async function getQuestionsByTopic(certification: "SAA-C03" | "CLF-C02", topic: string) {
+  const db = await getDb();
+  if (!db) return [];
+  
+  const { and } = await import("drizzle-orm");
+  const result = await db
+    .select()
+    .from(awsQuestions)
+    .where(and(
+      eq(awsQuestions.certification, certification),
+      eq(awsQuestions.topic, topic)
+    ));
+  
+  return result;
+}
+
+// Exam Session queries
+export async function createExamSession(data: {
+  userId: number;
+  certification: "SAA-C03" | "CLF-C02";
+  mode: "exam" | "practice";
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  const result = await db.insert(examSessions).values(data);
+  
+  return result;
+}
+
+export async function updateExamSession(sessionId: number, data: Partial<{
+  score: string | number | null;
+  correctAnswers: number | null;
+  timeTaken: number | null;
+  isPassed: boolean | null;
+  questionsAttempted: number | null;
+}>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  const updateData: Record<string, any> = {};
+  
+  if (data.score !== undefined) updateData.score = data.score;
+  if (data.correctAnswers !== undefined) updateData.correctAnswers = data.correctAnswers;
+  if (data.timeTaken !== undefined) updateData.timeTaken = data.timeTaken;
+  if (data.isPassed !== undefined) updateData.isPassed = data.isPassed;
+  if (data.questionsAttempted !== undefined) updateData.questionsAttempted = data.questionsAttempted;
+  
+  const result = await db
+    .update(examSessions)
+    .set(updateData)
+    .where(eq(examSessions.id, sessionId));
+  
+  return result;
+}
+
+export async function getExamSessionById(sessionId: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  
+  const result = await db
+    .select()
+    .from(examSessions)
+    .where(eq(examSessions.id, sessionId))
+    .limit(1);
+  
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function getExamSessionsByUser(userId: number, certification?: "SAA-C03" | "CLF-C02") {
+  const db = await getDb();
+  if (!db) return [];
+  
+  const { and } = await import("drizzle-orm");
+  
+  if (certification) {
+    return db
+      .select()
+      .from(examSessions)
+      .where(and(
+        eq(examSessions.userId, userId),
+        eq(examSessions.certification, certification)
+      ));
+  }
+  
+  return db.select().from(examSessions).where(eq(examSessions.userId, userId));
+}
+
+// User Progress queries
+export async function getUserProgress(userId: number, certification: "SAA-C03" | "CLF-C02") {
+  const db = await getDb();
+  if (!db) return undefined;
+  
+  const { and } = await import("drizzle-orm");
+  const result = await db
+    .select()
+    .from(userProgress)
+    .where(and(
+      eq(userProgress.userId, userId),
+      eq(userProgress.certification, certification)
+    ))
+    .limit(1);
+  
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function getTopicPerformance(userId: number, certification: "SAA-C03" | "CLF-C02") {
+  const db = await getDb();
+  if (!db) return [];
+  
+  const { and } = await import("drizzle-orm");
+  const result = await db
+    .select()
+    .from(topicPerformance)
+    .where(and(
+      eq(topicPerformance.userId, userId),
+      eq(topicPerformance.certification, certification)
+    ));
+  
+  return result;
+}
+
+export async function getUserAnswersBySession(examSessionId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  
+  const result = await db
+    .select()
+    .from(userAnswers)
+    .where(eq(userAnswers.examSessionId, examSessionId));
+  
+  return result;
+}
+
+export async function createUserAnswer(data: {
+  examSessionId: number;
+  questionId: number;
+  userAnswer: string[];
+  isCorrect: boolean;
+  timeSpent?: number;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  const result = await db.insert(userAnswers).values(data);
+  
+  return result;
+}

@@ -1,10 +1,12 @@
 import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
-import { publicProcedure, router } from "./_core/trpc";
+import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
+import { z } from "zod";
+import { invokeLLM } from "./_core/llm";
+import * as db from "./db";
 
 export const appRouter = router({
-    // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
   system: systemRouter,
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),
@@ -17,12 +19,175 @@ export const appRouter = router({
     }),
   }),
 
-  // TODO: add feature routers here, e.g.
-  // todo: router({
-  //   list: protectedProcedure.query(({ ctx }) =>
-  //     db.getUserTodos(ctx.user.id)
-  //   ),
-  // }),
+  // Exam procedures
+  exam: router({
+    startExam: protectedProcedure
+      .input(z.object({
+        certification: z.enum(["SAA-C03", "CLF-C02"]),
+        mode: z.enum(["exam", "practice"]),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const result = await db.createExamSession({
+          userId: ctx.user.id,
+          certification: input.certification,
+          mode: input.mode,
+        });
+        
+        // Get 65 random questions for the exam
+        const questions = await db.getQuestionsByCertification(input.certification, 65);
+        
+        // Extract session ID from result
+        const sessionId = (result as any).insertId || 1;
+        
+        return {
+          sessionId,
+          questions: questions.map(q => ({
+            id: q.id,
+            questionText: q.questionText,
+            options: q.options,
+            questionType: q.questionType,
+          })),
+          totalQuestions: 65,
+          timeLimitMinutes: input.certification === "SAA-C03" ? 130 : 90,
+        };
+      }),
+
+    submitAnswer: protectedProcedure
+      .input(z.object({
+        sessionId: z.number(),
+        questionId: z.number(),
+        userAnswer: z.array(z.string()),
+        timeSpent: z.number().optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        // Get the question to check correctness
+        const questions = await db.getQuestionsByCertification("SAA-C03", 1000);
+        const allQuestions = [...questions, ...(await db.getQuestionsByCertification("CLF-C02", 1000))];
+        const question = allQuestions.find(q => q.id === input.questionId);
+        
+        if (!question) {
+          throw new Error("Question not found");
+        }
+        
+        const isCorrect = JSON.stringify(input.userAnswer.sort()) === 
+                         JSON.stringify((question.correctAnswers as string[]).sort());
+        
+        await db.createUserAnswer({
+          examSessionId: input.sessionId,
+          questionId: input.questionId,
+          userAnswer: input.userAnswer,
+          isCorrect,
+          timeSpent: input.timeSpent,
+        });
+        
+        return { isCorrect };
+      }),
+
+    submitExam: protectedProcedure
+      .input(z.object({
+        sessionId: z.number(),
+        timeTaken: z.number(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const userAnswers = await db.getUserAnswersBySession(input.sessionId);
+        const correctCount = userAnswers.filter(a => a.isCorrect).length;
+        const score = (correctCount / 65) * 100;
+        const isPassed = score >= 70; // AWS exams require 70% to pass
+        
+        await db.updateExamSession(input.sessionId, {
+          score: score.toString(),
+          correctAnswers: correctCount,
+          timeTaken: input.timeTaken,
+          isPassed,
+          questionsAttempted: userAnswers.length,
+        });
+        
+        return {
+          score: Math.round(score),
+          isPassed,
+          correctAnswers: correctCount,
+          totalQuestions: 65,
+        };
+      }),
+
+    getResults: protectedProcedure
+      .input(z.object({
+        sessionId: z.number(),
+      }))
+      .query(async ({ input }) => {
+        const session = await db.getExamSessionById(input.sessionId);
+        const userAnswers = await db.getUserAnswersBySession(input.sessionId);
+        
+        if (!session) {
+          throw new Error("Exam session not found");
+        }
+        
+        return {
+          score: session.score,
+          isPassed: session.isPassed,
+          correctAnswers: session.correctAnswers,
+          totalQuestions: session.totalQuestions,
+          timeTaken: session.timeTaken,
+          userAnswers,
+        };
+      }),
+  }),
+
+  // Progress procedures
+  progress: router({
+    getProgress: protectedProcedure
+      .input(z.object({
+        certification: z.enum(["SAA-C03", "CLF-C02"]),
+      }))
+      .query(async ({ input, ctx }) => {
+        const progress = await db.getUserProgress(ctx.user.id, input.certification);
+        const topicPerf = await db.getTopicPerformance(ctx.user.id, input.certification);
+        
+        return {
+          progress,
+          topicPerformance: topicPerf,
+        };
+      }),
+
+    getExamHistory: protectedProcedure
+      .input(z.object({
+        certification: z.enum(["SAA-C03", "CLF-C02"]).optional(),
+      }))
+      .query(async ({ input, ctx }) => {
+        const sessions = await db.getExamSessionsByUser(ctx.user.id, input.certification);
+        return sessions;
+      }),
+  }),
+
+  // AI Tutor procedures
+  aiTutor: router({
+    askQuestion: protectedProcedure
+      .input(z.object({
+        question: z.string(),
+        context: z.object({
+          certification: z.enum(["SAA-C03", "CLF-C02"]).optional(),
+          topic: z.string().optional(),
+          questionId: z.number().optional(),
+        }).optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const systemPrompt = `You are an expert AWS certification tutor helping students prepare for AWS exams. 
+        Provide clear, concise explanations of AWS concepts and services. 
+        When explaining why an answer is correct or incorrect, be specific and educational.
+        Focus on practical understanding rather than memorization.`;
+        
+        const response = await invokeLLM({
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: input.question },
+          ],
+        });
+        
+        return {
+          answer: response.choices[0]?.message.content || "Unable to generate response",
+        };
+      }),
+  }),
 });
 
 export type AppRouter = typeof appRouter;
