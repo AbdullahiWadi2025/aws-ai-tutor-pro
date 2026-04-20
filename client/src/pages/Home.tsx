@@ -1,137 +1,182 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { getLoginUrl } from "@/const";
 import { useLocation } from "wouter";
 import { BookOpen, Brain, BarChart3, Zap } from "lucide-react";
 
 export default function Home() {
-  const { isAuthenticated } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   const [, navigate] = useLocation();
 
-  if (isAuthenticated) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-slate-900 dark:to-slate-800">
-        <nav className="border-b bg-white dark:bg-slate-900 shadow-sm">
-          <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
-            <div className="flex items-center gap-2">
-              <Brain className="w-8 h-8 text-blue-600" />
-              <h1 className="text-2xl font-bold text-slate-900 dark:text-white">AWS AI Tutor Pro</h1>
-            </div>
-            <div className="flex gap-4">
-              <Button variant="outline" onClick={() => navigate("/dashboard")}>
-                Dashboard
-              </Button>
-              <Button onClick={() => navigate("/progress")}>
-                Progress
-              </Button>
-            </div>
-          </div>
-        </nav>
-
-        <main className="max-w-7xl mx-auto px-4 py-12">
-          <div className="text-center mb-12">
-            <h2 className="text-4xl font-bold text-slate-900 dark:text-white mb-4">
-              Master AWS Certifications
-            </h2>
-            <p className="text-xl text-slate-600 dark:text-slate-300">
-              Prepare for SAA-C03 and CLF-C02 with AI-powered learning
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
-            {/* Exam Mode Card */}
-            <Card className="p-8 hover:shadow-lg transition-shadow cursor-pointer" onClick={() => navigate("/exam")}>
-              <div className="flex items-center gap-4 mb-4">
-                <div className="bg-blue-100 dark:bg-blue-900 p-3 rounded-lg">
-                  <BookOpen className="w-6 h-6 text-blue-600 dark:text-blue-400" />
-                </div>
-                <h3 className="text-2xl font-bold text-slate-900 dark:text-white">Exam Mode</h3>
-              </div>
-              <p className="text-slate-600 dark:text-slate-300 mb-4">
-                Take a full-length timed exam with 65 questions. Get realistic exam experience with instant scoring and detailed feedback.
-              </p>
-              <Button className="w-full">Start Exam</Button>
-            </Card>
-
-            {/* Practice Mode Card */}
-            <Card className="p-8 hover:shadow-lg transition-shadow cursor-pointer" onClick={() => navigate("/practice")}>
-              <div className="flex items-center gap-4 mb-4">
-                <div className="bg-green-100 dark:bg-green-900 p-3 rounded-lg">
-                  <Zap className="w-6 h-6 text-green-600 dark:text-green-400" />
-                </div>
-                <h3 className="text-2xl font-bold text-slate-900 dark:text-white">Practice Mode</h3>
-              </div>
-              <p className="text-slate-600 dark:text-slate-300 mb-4">
-                Learn at your own pace. Get immediate feedback and detailed explanations for every question.
-              </p>
-              <Button className="w-full">Start Practicing</Button>
-            </Card>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* AI Tutor Card */}
-            <Card className="p-8 hover:shadow-lg transition-shadow cursor-pointer" onClick={() => navigate("/ai-tutor")}>
-              <div className="flex items-center gap-4 mb-4">
-                <div className="bg-purple-100 dark:bg-purple-900 p-3 rounded-lg">
-                  <Brain className="w-6 h-6 text-purple-600 dark:text-purple-400" />
-                </div>
-                <h3 className="text-2xl font-bold text-slate-900 dark:text-white">AI Tutor</h3>
-              </div>
-              <p className="text-slate-600 dark:text-slate-300 mb-4">
-                Ask questions and get expert explanations. Understand AWS concepts deeply with AI-powered guidance.
-              </p>
-              <Button className="w-full">Chat with AI</Button>
-            </Card>
-
-            {/* Progress Card */}
-            <Card className="p-8 hover:shadow-lg transition-shadow cursor-pointer" onClick={() => navigate("/progress")}>
-              <div className="flex items-center gap-4 mb-4">
-                <div className="bg-orange-100 dark:bg-orange-900 p-3 rounded-lg">
-                  <BarChart3 className="w-6 h-6 text-orange-600 dark:text-orange-400" />
-                </div>
-                <h3 className="text-2xl font-bold text-slate-900 dark:text-white">Your Progress</h3>
-              </div>
-              <p className="text-slate-600 dark:text-slate-300 mb-4">
-                Track your performance across topics. See your strengths and areas for improvement.
-              </p>
-              <Button className="w-full">View Analytics</Button>
-            </Card>
-          </div>
-        </main>
-      </div>
-    );
+  if (isAuthenticated && user) {
+    navigate("/dashboard");
+    return null;
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center px-4">
-      <div className="text-center max-w-2xl">
-        <div className="flex justify-center mb-8">
-          <Brain className="w-16 h-16 text-white" />
-        </div>
-        <h1 className="text-5xl font-bold text-white mb-4">AWS AI Tutor Pro</h1>
-        <p className="text-xl text-blue-100 mb-8">
-          Master AWS certifications with AI-powered learning, realistic exam simulations, and personalized progress tracking.
-        </p>
-        <div className="space-y-4">
-          <p className="text-blue-100">Prepare for:</p>
-          <div className="flex justify-center gap-4 mb-8">
-            <div className="bg-white bg-opacity-20 px-6 py-3 rounded-lg text-white font-semibold">
-              SAA-C03
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900">
+      {/* Navigation */}
+      <nav className="border-b border-blue-800/30 bg-slate-900/50 backdrop-blur-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
+          <div className="flex items-center gap-2">
+            <div className="w-10 h-10 bg-gradient-to-br from-blue-400 to-blue-600 rounded-lg flex items-center justify-center">
+              <BookOpen className="w-6 h-6 text-white" />
             </div>
-            <div className="bg-white bg-opacity-20 px-6 py-3 rounded-lg text-white font-semibold">
-              CLF-C02
+            <span className="text-xl font-bold text-white">AWS AI Tutor Pro</span>
+          </div>
+          <a href={getLoginUrl()}>
+            <Button variant="outline" className="border-blue-400 text-blue-300 hover:bg-blue-900/50">
+              Sign In
+            </Button>
+          </a>
+        </div>
+      </nav>
+
+      {/* Hero Section */}
+      <section className="relative py-20 px-4 sm:px-6 lg:px-8 overflow-hidden">
+        <div className="max-w-7xl mx-auto">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+            {/* Left Content */}
+            <div className="space-y-8">
+              <div className="space-y-4">
+                <h1 className="text-5xl sm:text-6xl font-bold text-white leading-tight">
+                  Master AWS Certifications with AI
+                </h1>
+                <p className="text-xl text-blue-200">
+                  Prepare for SAA-C03 and CLF-C02 exams with realistic practice tests, AI-powered tutoring, and comprehensive analytics.
+                </p>
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-4">
+                <a href={getLoginUrl()}>
+                  <Button className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white text-lg px-8 py-6 h-auto rounded-lg">
+                    Start Learning Now
+                  </Button>
+                </a>
+                <Button variant="outline" className="border-blue-400 text-blue-300 hover:bg-blue-900/50 text-lg px-8 py-6 h-auto rounded-lg">
+                  Learn More
+                </Button>
+              </div>
+
+              {/* Stats */}
+              <div className="grid grid-cols-3 gap-4 pt-8">
+                <div className="space-y-2">
+                  <div className="text-3xl font-bold text-blue-400">500+</div>
+                  <div className="text-sm text-blue-200">Real Questions</div>
+                </div>
+                <div className="space-y-2">
+                  <div className="text-3xl font-bold text-blue-400">2</div>
+                  <div className="text-sm text-blue-200">Certifications</div>
+                </div>
+                <div className="space-y-2">
+                  <div className="text-3xl font-bold text-blue-400">AI</div>
+                  <div className="text-sm text-blue-200">Powered</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Right Image */}
+            <div className="relative">
+              <div className="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-purple-600/20 rounded-2xl blur-3xl"></div>
+              <img
+                src="https://d2xsxph8kpxj0f.cloudfront.net/310519663570210779/nNerxvzoKEAhA9FPZGf5rg/hero-exam-study-ZPdFN5YHXv4UR3WSLfJCMd.webp"
+                alt="AWS Certification Study"
+                className="relative rounded-2xl shadow-2xl"
+              />
             </div>
           </div>
         </div>
-        <Button
-          size="lg"
-          className="bg-white text-blue-600 hover:bg-blue-50"
-          onClick={() => window.location.href = getLoginUrl()}
-        >
-          Sign In to Get Started
-        </Button>
-      </div>
+      </section>
+
+      {/* Features Section */}
+      <section className="py-20 px-4 sm:px-6 lg:px-8 bg-slate-800/50">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl font-bold text-white mb-4">Comprehensive Study Platform</h2>
+            <p className="text-xl text-blue-200">Everything you need to ace your AWS certification</p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+            {/* Exam Mode */}
+            <div className="group bg-gradient-to-br from-slate-700/50 to-slate-800/50 border border-blue-400/20 rounded-xl p-6 hover:border-blue-400/50 transition-all">
+              <div className="mb-4">
+                <img
+                  src="https://d2xsxph8kpxj0f.cloudfront.net/310519663570210779/nNerxvzoKEAhA9FPZGf5rg/exam-mode-hero-YcWhHhJ7qcd9mW5iALpD3f.webp"
+                  alt="Exam Mode"
+                  className="w-full h-40 object-cover rounded-lg mb-4"
+                />
+              </div>
+              <Zap className="w-8 h-8 text-blue-400 mb-3" />
+              <h3 className="text-xl font-bold text-white mb-2">Exam Mode</h3>
+              <p className="text-blue-200">Take realistic timed exams with 65 questions and instant scoring</p>
+            </div>
+
+            {/* Practice Mode */}
+            <div className="group bg-gradient-to-br from-slate-700/50 to-slate-800/50 border border-blue-400/20 rounded-xl p-6 hover:border-blue-400/50 transition-all">
+              <div className="mb-4">
+                <img
+                  src="https://d2xsxph8kpxj0f.cloudfront.net/310519663570210779/nNerxvzoKEAhA9FPZGf5rg/practice-mode-hero-CzfCCaUsT2jSRCiaByvyKu.webp"
+                  alt="Practice Mode"
+                  className="w-full h-40 object-cover rounded-lg mb-4"
+                />
+              </div>
+              <BookOpen className="w-8 h-8 text-blue-400 mb-3" />
+              <h3 className="text-xl font-bold text-white mb-2">Practice Mode</h3>
+              <p className="text-blue-200">Learn at your own pace with immediate feedback and explanations</p>
+            </div>
+
+            {/* AI Tutor */}
+            <div className="group bg-gradient-to-br from-slate-700/50 to-slate-800/50 border border-blue-400/20 rounded-xl p-6 hover:border-blue-400/50 transition-all">
+              <div className="mb-4">
+                <img
+                  src="https://d2xsxph8kpxj0f.cloudfront.net/310519663570210779/nNerxvzoKEAhA9FPZGf5rg/ai-tutor-hero-LTd8ytWpCjguRsCnop4ySx.webp"
+                  alt="AI Tutor"
+                  className="w-full h-40 object-cover rounded-lg mb-4"
+                />
+              </div>
+              <Brain className="w-8 h-8 text-blue-400 mb-3" />
+              <h3 className="text-xl font-bold text-white mb-2">AI Tutor</h3>
+              <p className="text-blue-200">Ask questions and get expert explanations powered by AI</p>
+            </div>
+
+            {/* Progress Tracking */}
+            <div className="group bg-gradient-to-br from-slate-700/50 to-slate-800/50 border border-blue-400/20 rounded-xl p-6 hover:border-blue-400/50 transition-all">
+              <div className="mb-4">
+                <img
+                  src="https://d2xsxph8kpxj0f.cloudfront.net/310519663570210779/nNerxvzoKEAhA9FPZGf5rg/progress-analytics-hero-kyapwmqxGMxo8b2eq4pxCF.webp"
+                  alt="Progress Analytics"
+                  className="w-full h-40 object-cover rounded-lg mb-4"
+                />
+              </div>
+              <BarChart3 className="w-8 h-8 text-blue-400 mb-3" />
+              <h3 className="text-xl font-bold text-white mb-2">Progress Analytics</h3>
+              <p className="text-blue-200">Track performance with detailed analytics and topic breakdowns</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* CTA Section */}
+      <section className="py-20 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-4xl mx-auto text-center">
+          <h2 className="text-4xl font-bold text-white mb-6">Ready to Pass Your AWS Exam?</h2>
+          <p className="text-xl text-blue-200 mb-8">
+            Join thousands of students preparing for AWS certifications with our comprehensive study platform.
+          </p>
+          <a href={getLoginUrl()}>
+            <Button className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white text-lg px-8 py-6 h-auto rounded-lg">
+              Get Started Free
+            </Button>
+          </a>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="border-t border-blue-800/30 bg-slate-900/50 py-8 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto text-center text-blue-300">
+          <p>&copy; 2026 AWS AI Tutor Pro. All rights reserved.</p>
+        </div>
+      </footer>
     </div>
   );
 }
