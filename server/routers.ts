@@ -57,8 +57,8 @@ export const appRouter = router({
         // Get all available questions (up to 65)
         const questions = await db.getQuestionsByCertification(input.certification, 65);
         
-        // Extract session ID from result
-        const sessionId = (result as any).insertId || 1;
+        // Extract session ID from result — createExamSession now returns { insertId }
+        const sessionId = result.insertId;
         
         return {
           sessionId,

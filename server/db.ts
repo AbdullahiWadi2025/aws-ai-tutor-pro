@@ -135,10 +135,24 @@ export async function createExamSession(data: {
 }) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  
+
+  // Drizzle mysql2 returns [ResultSetHeader, ...] — insertId is on index [0]
   const result = await db.insert(examSessions).values(data);
-  
-  return result;
+  const insertId = (result as any)[0]?.insertId ?? (result as any).insertId;
+
+  if (!insertId) {
+    // Fallback: query the most recently created session for this user
+    const recent = await db
+      .select()
+      .from(examSessions)
+      .where(eq(examSessions.userId, data.userId))
+      .orderBy(sql`id DESC`)
+      .limit(1);
+    if (!recent.length) throw new Error("Failed to create exam session");
+    return { insertId: recent[0].id };
+  }
+
+  return { insertId };
 }
 
 export async function updateExamSession(sessionId: number, data: Partial<{
