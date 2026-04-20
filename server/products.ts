@@ -19,8 +19,8 @@ export const SUBSCRIPTION_PRODUCTS = {
   },
   PREMIUM_MONTHLY: {
     name: "Premium Monthly",
-    stripePriceId: process.env.STRIPE_PREMIUM_MONTHLY_PRICE_ID || "price_premium_monthly",
-    stripeProductId: process.env.STRIPE_PREMIUM_PRODUCT_ID || "prod_premium",
+    stripePriceId: process.env.STRIPE_PREMIUM_MONTHLY_PRICE_ID || "price_1TOAfLLqeM5xc3hbyigHVjve",
+    stripeProductId: process.env.STRIPE_PREMIUM_PRODUCT_ID || "prod_UMuUNWmnVMX5MU",
     amount: 999, // $9.99 in cents
     currency: "usd",
     interval: "month" as const,
@@ -36,8 +36,8 @@ export const SUBSCRIPTION_PRODUCTS = {
   },
   PREMIUM_ANNUAL: {
     name: "Premium Annual",
-    stripePriceId: process.env.STRIPE_PREMIUM_ANNUAL_PRICE_ID || "price_premium_annual",
-    stripeProductId: process.env.STRIPE_PREMIUM_PRODUCT_ID || "prod_premium",
+    stripePriceId: process.env.STRIPE_PREMIUM_ANNUAL_PRICE_ID || "price_1TOAfNLqeM5xc3hbK3WdaWxw",
+    stripeProductId: process.env.STRIPE_PREMIUM_PRODUCT_ID || "prod_UMuULNzHqslVJw",
     amount: 9999, // $99.99 in cents (2 months free)
     currency: "usd",
     interval: "year" as const,
