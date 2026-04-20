@@ -6,6 +6,8 @@ import { z } from "zod";
 import { invokeLLM } from "./_core/llm";
 import * as db from "./db";
 import { adminRouter } from "./admin";
+import { stripeRouter } from "./stripe-router";
+import { requirePremiumAccess, canAccessFeature } from "./premium-access";
 
 export const appRouter = router({
   system: systemRouter,
@@ -28,6 +30,10 @@ export const appRouter = router({
         mode: z.enum(["exam", "practice"]),
       }))
       .mutation(async ({ input, ctx }) => {
+        // Check premium access for exam mode
+        if (input.mode === "exam") {
+          await requirePremiumAccess(ctx.user.id);
+        }
         const result = await db.createExamSession({
           userId: ctx.user.id,
           certification: input.certification,
@@ -171,7 +177,9 @@ export const appRouter = router({
           questionId: z.number().optional(),
         }).optional(),
       }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
+        // Check premium access for AI tutor
+        await requirePremiumAccess(ctx.user.id);
         const systemPrompt = `You are an expert AWS certification tutor helping students prepare for AWS exams. 
         Provide clear, concise explanations of AWS concepts and services. 
         When explaining why an answer is correct or incorrect, be specific and educational.
@@ -192,6 +200,9 @@ export const appRouter = router({
 
   // Admin procedures
   admin: adminRouter,
+
+  // Stripe payment procedures
+  stripe: stripeRouter,
 });
 
 export type AppRouter = typeof appRouter;

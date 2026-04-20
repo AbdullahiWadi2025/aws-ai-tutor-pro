@@ -12,6 +12,8 @@ import ExamResults from "./pages/ExamResults";
 import AITutor from "./pages/AITutor";
 import Progress from "./pages/Progress";
 import AdminDashboard from "./pages/AdminDashboard";
+import Pricing from "./pages/Pricing";
+import SubscriptionManagement from "./pages/SubscriptionManagement";
 import { useAuth } from "./_core/hooks/useAuth";
 import { Loader2 } from "lucide-react";
 
@@ -29,6 +31,7 @@ function Router() {
   return (
     <Switch>
       <Route path="/" component={Home} />
+      <Route path="/pricing" component={Pricing} />
       {isAuthenticated && (
         <>
           <Route path="/dashboard" component={Dashboard} />
@@ -37,6 +40,7 @@ function Router() {
           <Route path="/exam/:sessionId/results" component={ExamResults} />
           <Route path="/ai-tutor" component={AITutor} />
           <Route path="/progress" component={Progress} />
+          <Route path="/subscription" component={SubscriptionManagement} />
           <Route path="/admin" component={AdminDashboard} />
         </>
       )}

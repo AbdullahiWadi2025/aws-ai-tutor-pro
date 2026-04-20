@@ -115,3 +115,17 @@
 - [x] Database migrations applied
 - [x] Initial question seeding
 - [x] Dev server running and accessible
+
+## Payment System (Stripe Integration) - NEW
+- [x] Add Stripe feature to project via webdev_add_feature
+- [x] Update database schema with subscription tables (subscriptions, stripe_customers, subscription_plans)
+- [x] Create Stripe webhook handler for payment events (checkout.session.completed, customer.subscription.updated, customer.subscription.deleted)
+- [x] Implement tRPC procedures: createCheckoutSession, getSubscriptionStatus, cancelSubscription, updateSubscription
+- [x] Create pricing page with subscription tier display (Free, Premium Monthly, Premium Annual)
+- [x] Build subscription management page (view current plan, upgrade/downgrade, cancel)
+- [x] Implement access control layer to gate premium features (exams, AI tutor, unlimited practice)
+- [x] Add subscription status checks to exam and AI tutor procedures
+- [ ] Create admin procedures for subscription analytics and management
+- [ ] Test full payment flow (checkout, webhook, subscription activation)
+- [ ] Test subscription upgrade/downgrade/cancellation flows
+- [ ] Add loading states and error handling for payment operations

@@ -251,3 +251,117 @@ export async function createUserAnswer(data: {
   
   return result;
 }
+
+// Import subscription tables
+import { subscriptionPlans, userSubscriptions, paymentHistory } from "../drizzle/schema";
+
+// Subscription Plans queries
+export async function getSubscriptionPlans() {
+  const db = await getDb();
+  if (!db) return [];
+  
+  const result = await db.select().from(subscriptionPlans);
+  return result;
+}
+
+export async function getSubscriptionPlanByStripePriceId(stripePriceId: string) {
+  const db = await getDb();
+  if (!db) return undefined;
+  
+  const result = await db
+    .select()
+    .from(subscriptionPlans)
+    .where(eq(subscriptionPlans.stripePriceId, stripePriceId))
+    .limit(1);
+  
+  return result.length > 0 ? result[0] : undefined;
+}
+
+// User Subscriptions queries
+export async function getUserSubscription(userId: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  
+  const result = await db
+    .select()
+    .from(userSubscriptions)
+    .where(eq(userSubscriptions.userId, userId))
+    .limit(1);
+  
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function createUserSubscription(data: {
+  userId: number;
+  stripeCustomerId: string;
+  stripeSubscriptionId?: string;
+  planId: number;
+  status: "active" | "inactive" | "canceled" | "past_due";
+  currentPeriodStart?: Date;
+  currentPeriodEnd?: Date;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  const result = await db.insert(userSubscriptions).values(data);
+  return result;
+}
+
+export async function updateUserSubscription(userId: number, data: Partial<{
+  stripeSubscriptionId: string;
+  status: "active" | "inactive" | "canceled" | "past_due";
+  currentPeriodStart: Date;
+  currentPeriodEnd: Date;
+  canceledAt: Date;
+}>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  const result = await db
+    .update(userSubscriptions)
+    .set(data)
+    .where(eq(userSubscriptions.userId, userId));
+  
+  return result;
+}
+
+export async function getUserSubscriptionByStripeCustomerId(stripeCustomerId: string) {
+  const db = await getDb();
+  if (!db) return undefined;
+  
+  const result = await db
+    .select()
+    .from(userSubscriptions)
+    .where(eq(userSubscriptions.stripeCustomerId, stripeCustomerId))
+    .limit(1);
+  
+  return result.length > 0 ? result[0] : undefined;
+}
+
+// Payment History queries
+export async function createPaymentHistory(data: {
+  userId: number;
+  stripePaymentIntentId: string;
+  amount: number;
+  currency: string;
+  status: "succeeded" | "processing" | "requires_payment_method" | "canceled";
+  description?: string;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  const result = await db.insert(paymentHistory).values(data);
+  return result;
+}
+
+export async function getPaymentHistoryByUser(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  
+  const result = await db
+    .select()
+    .from(paymentHistory)
+    .where(eq(paymentHistory.userId, userId));
+  
+  return result;
+}

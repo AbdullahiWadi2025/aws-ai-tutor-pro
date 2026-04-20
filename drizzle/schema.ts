@@ -105,3 +105,52 @@ export const topicPerformance = mysqlTable("topic_performance", {
 
 export type TopicPerformance = typeof topicPerformance.$inferSelect;
 export type InsertTopicPerformance = typeof topicPerformance.$inferInsert;
+// Subscription Plans Table
+export const subscriptionPlans = mysqlTable("subscription_plans", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 255 }).notNull(), // "Free", "Premium Monthly", "Premium Annual"
+  stripePriceId: varchar("stripe_price_id", { length: 255 }).notNull().unique(),
+  stripeProductId: varchar("stripe_product_id", { length: 255 }).notNull(),
+  amount: int("amount").notNull(), // in cents (e.g., 999 = $9.99)
+  currency: varchar("currency", { length: 3 }).default("usd").notNull(),
+  interval: mysqlEnum("interval", ["month", "year", "one_time"]).notNull(),
+  features: json("features").$type<string[]>().notNull(), // Array of feature names
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+
+export type SubscriptionPlan = typeof subscriptionPlans.$inferSelect;
+export type InsertSubscriptionPlan = typeof subscriptionPlans.$inferInsert;
+
+// User Subscriptions Table
+export const userSubscriptions = mysqlTable("user_subscriptions", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("user_id").notNull(),
+  stripeCustomerId: varchar("stripe_customer_id", { length: 255 }).notNull(),
+  stripeSubscriptionId: varchar("stripe_subscription_id", { length: 255 }),
+  planId: int("plan_id").notNull(),
+  status: mysqlEnum("status", ["active", "inactive", "canceled", "past_due"]).default("inactive").notNull(),
+  currentPeriodStart: timestamp("current_period_start"),
+  currentPeriodEnd: timestamp("current_period_end"),
+  canceledAt: timestamp("canceled_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+
+export type UserSubscription = typeof userSubscriptions.$inferSelect;
+export type InsertUserSubscription = typeof userSubscriptions.$inferInsert;
+
+// Payment History Table
+export const paymentHistory = mysqlTable("payment_history", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("user_id").notNull(),
+  stripePaymentIntentId: varchar("stripe_payment_intent_id", { length: 255 }).notNull().unique(),
+  amount: int("amount").notNull(), // in cents
+  currency: varchar("currency", { length: 3 }).default("usd").notNull(),
+  status: mysqlEnum("status", ["succeeded", "processing", "requires_payment_method", "canceled"]).notNull(),
+  description: text("description"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type PaymentHistory = typeof paymentHistory.$inferSelect;
+export type InsertPaymentHistory = typeof paymentHistory.$inferInsert;
