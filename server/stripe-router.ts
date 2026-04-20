@@ -4,6 +4,7 @@ import Stripe from "stripe";
 import { ENV } from "./_core/env";
 import * as db from "./db";
 import { SUBSCRIPTION_PRODUCTS } from "./products";
+import { updateSubscription as updateStripeSubscription } from "./stripe-update";
 
 const stripe = new Stripe(ENV.stripeSecretKey || "");
 
@@ -159,6 +160,17 @@ export const stripeRouter = router({
     const subscription = await db.getUserSubscription(ctx.user.id);
     return subscription?.status === "active";
   }),
+
+  /**
+   * Update subscription to a different plan (upgrade/downgrade)
+   */
+  updateSubscription: protectedProcedure
+    .input(z.object({
+      priceId: z.string(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      return await updateStripeSubscription(ctx.user.id, input.priceId);
+    }),
 });
 
 export type StripeRouter = typeof stripeRouter;
