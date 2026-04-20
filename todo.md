@@ -196,3 +196,6 @@
 - [x] Reduce BETATESTER from 50 to 10 uses (60-day extension, VIP tier)
 - [x] Deactivate REDDIT14 and AWSPREP codes (reserved for later)
 - [x] Verify admin panel reflects new code limits
+
+## UI Fix
+- [x] Remove woman's picture from Home page hero section and replace with relevant AWS/tech visual

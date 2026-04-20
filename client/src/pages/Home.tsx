@@ -77,9 +77,9 @@ export default function Home() {
             <div className="relative">
               <div className="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-purple-600/20 rounded-2xl blur-3xl"></div>
               <img
-                src="https://d2xsxph8kpxj0f.cloudfront.net/310519663570210779/nNerxvzoKEAhA9FPZGf5rg/hero-exam-study-ZPdFN5YHXv4UR3WSLfJCMd.webp"
-                alt="AWS Certification Study"
-                className="relative rounded-2xl shadow-2xl"
+                src="https://d2xsxph8kpxj0f.cloudfront.net/310519663570210779/nNerxvzoKEAhA9FPZGf5rg/hero-aws-tech-mnHhXsjbnshtTcx3caNqoQ.webp"
+                alt="AWS Certification Study Platform"
+                className="relative rounded-2xl shadow-2xl w-full"
               />
             </div>
           </div>
