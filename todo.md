@@ -199,3 +199,8 @@
 
 ## UI Fix
 - [x] Remove woman's picture from Home page hero section and replace with relevant AWS/tech visual
+
+## Bug Fix: Phantom User Rows
+- [x] Delete duplicate user rows (475 phantom rows with null name/email, same openId)
+- [x] Add unique constraint on users.openId to prevent future duplicates
+- [x] Update Drizzle schema to reflect the unique constraint (was already defined, missing from DB — now applied)
