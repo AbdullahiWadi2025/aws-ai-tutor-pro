@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -10,6 +10,7 @@ interface ExamQuestion {
   questionText: string;
   options: string[];
   questionType: "single" | "multiple";
+  correctAnswers?: string[];
 }
 
 export default function ExamMode() {
@@ -22,6 +23,10 @@ export default function ExamMode() {
   const [questions, setQuestions] = useState<ExamQuestion[]>([]);
   const [sessionId, setSessionId] = useState<number | null>(null);
   const [startTime, setStartTime] = useState<number>(0);
+  // Track which cert button is loading independently
+  const [startingCert, setStartingCert] = useState<"SAA-C03" | "CLF-C02" | null>(null);
+  const [isNavigating, setIsNavigating] = useState(false);
+  const submitExamCalledRef = useRef(false);
 
   const utils = trpc.useUtils();
   const startExamMutation = trpc.exam.startExam.useMutation();
@@ -45,14 +50,19 @@ export default function ExamMode() {
     return () => clearInterval(timer);
   }, [examStarted, timeLeft]);
 
-  // Auto-submit when time runs out
+  // Auto-submit when time runs out (guard against double-call)
   useEffect(() => {
-    if (timeLeft === 0 && examStarted && sessionId) {
+    if (timeLeft === 0 && examStarted && sessionId && !submitExamCalledRef.current) {
+      submitExamCalledRef.current = true;
       handleSubmitExam();
     }
   }, [timeLeft, examStarted, sessionId]);
 
   const handleStartExam = async (cert: "SAA-C03" | "CLF-C02") => {
+    // Prevent starting if already starting one
+    if (startingCert !== null) return;
+
+    setStartingCert(cert);
     try {
       const result = await startExamMutation.mutateAsync({
         certification: cert,
@@ -63,12 +73,15 @@ export default function ExamMode() {
       setQuestions(result.questions);
       setSelectedCert(cert);
       setExamStarted(true);
-      setTimeLeft(result.timeLimitMinutes * 60); // Convert to seconds
+      setTimeLeft(result.timeLimitMinutes * 60);
       setStartTime(Date.now());
       setCurrentQuestionIdx(0);
       setSelectedAnswers({});
+      submitExamCalledRef.current = false;
     } catch (error) {
       console.error("Failed to start exam:", error);
+    } finally {
+      setStartingCert(null);
     }
   };
 
@@ -78,11 +91,10 @@ export default function ExamMode() {
 
     setSelectedAnswers(prev => {
       const current = prev[currentQuestion.id] || [];
-      
+
       if (currentQuestion.questionType === "single") {
         return { ...prev, [currentQuestion.id]: [option] };
       } else {
-        // Multiple select
         if (current.includes(option)) {
           return { ...prev, [currentQuestion.id]: current.filter(a => a !== option) };
         } else {
@@ -94,24 +106,43 @@ export default function ExamMode() {
 
   const handleNext = async () => {
     const currentQuestion = questions[currentQuestionIdx];
-    if (!currentQuestion || !sessionId) return;
+    if (!currentQuestion || !sessionId || isNavigating) return;
 
-    // Submit answer
-    await submitAnswerMutation.mutateAsync({
-      sessionId,
-      questionId: currentQuestion.id,
-      userAnswer: selectedAnswers[currentQuestion.id] || [],
-    });
-
-    if (currentQuestionIdx < questions.length - 1) {
-      setCurrentQuestionIdx(currentQuestionIdx + 1);
+    setIsNavigating(true);
+    try {
+      // Fire-and-forget: submit the answer but don't block navigation on failure
+      submitAnswerMutation.mutate({
+        sessionId,
+        questionId: currentQuestion.id,
+        userAnswer: selectedAnswers[currentQuestion.id] || [],
+      });
+    } catch {
+      // Non-blocking — we still advance the question
     }
+
+    // Always advance to the next question
+    setCurrentQuestionIdx(prev => Math.min(prev + 1, questions.length - 1));
+    setIsNavigating(false);
+  };
+
+  const handlePrevious = () => {
+    setCurrentQuestionIdx(prev => Math.max(0, prev - 1));
   };
 
   const handleSubmitExam = async () => {
     if (!sessionId) return;
 
     try {
+      // Submit any unanswered current question first
+      const currentQuestion = questions[currentQuestionIdx];
+      if (currentQuestion && sessionId) {
+        submitAnswerMutation.mutate({
+          sessionId,
+          questionId: currentQuestion.id,
+          userAnswer: selectedAnswers[currentQuestion.id] || [],
+        });
+      }
+
       const timeTaken = Math.floor((Date.now() - startTime) / 1000);
       await submitExamMutation.mutateAsync({
         sessionId,
@@ -150,12 +181,12 @@ export default function ExamMode() {
               <p className="text-slate-600 dark:text-slate-300 mb-6">
                 <strong>Questions:</strong> 65
               </p>
-              <Button 
-                className="w-full" 
-                disabled={startExamMutation.isPending}
+              <Button
+                className="w-full"
+                disabled={startingCert !== null}
                 onClick={() => handleStartExam("SAA-C03")}
               >
-                {startExamMutation.isPending ? (
+                {startingCert === "SAA-C03" ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                     Starting...
@@ -177,12 +208,12 @@ export default function ExamMode() {
               <p className="text-slate-600 dark:text-slate-300 mb-6">
                 <strong>Questions:</strong> 65
               </p>
-              <Button 
-                className="w-full" 
-                disabled={startExamMutation.isPending}
+              <Button
+                className="w-full"
+                disabled={startingCert !== null}
                 onClick={() => handleStartExam("CLF-C02")}
               >
-                {startExamMutation.isPending ? (
+                {startingCert === "CLF-C02" ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                     Starting...
@@ -200,7 +231,7 @@ export default function ExamMode() {
 
   const currentQuestion = questions[currentQuestionIdx];
   const currentAnswers = selectedAnswers[currentQuestion?.id] || [];
-  const timeWarning = timeLeft < 300; // Less than 5 minutes
+  const timeWarning = timeLeft < 300;
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900 p-4">
@@ -208,7 +239,9 @@ export default function ExamMode() {
       <div className={`fixed top-0 left-0 right-0 border-b shadow-sm p-4 z-10 ${timeWarning ? 'bg-red-50 dark:bg-red-900' : 'bg-white dark:bg-slate-800'}`}>
         <div className="max-w-7xl mx-auto flex justify-between items-center">
           <div>
-            <p className="text-sm text-slate-600 dark:text-slate-400">Question {currentQuestionIdx + 1} of {questions.length}</p>
+            <p className="text-sm text-slate-600 dark:text-slate-400">
+              {selectedCert} — Question {currentQuestionIdx + 1} of {questions.length}
+            </p>
           </div>
           <div className={`text-2xl font-bold ${timeWarning ? 'text-red-600' : 'text-slate-900 dark:text-white'}`}>
             {Math.floor(timeLeft / 60)}:{String(timeLeft % 60).padStart(2, "0")}
@@ -225,7 +258,7 @@ export default function ExamMode() {
       <div className="max-w-4xl mx-auto mt-24">
         {currentQuestion && (
           <Card className="p-8">
-            <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-6">
+            <h2 className="text-xl font-semibold text-slate-900 dark:text-white mb-6 whitespace-pre-line leading-relaxed">
               {currentQuestion.questionText}
             </h2>
 
@@ -233,7 +266,7 @@ export default function ExamMode() {
               {currentQuestion.options.map((option, idx) => (
                 <label
                   key={idx}
-                  className="flex items-center p-4 border-2 rounded-lg cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                  className="flex items-start p-4 border-2 rounded-lg cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
                   style={{
                     borderColor: currentAnswers.includes(option) ? "#3b82f6" : "#e2e8f0",
                   }}
@@ -244,7 +277,7 @@ export default function ExamMode() {
                     value={option}
                     checked={currentAnswers.includes(option)}
                     onChange={() => handleSelectAnswer(option)}
-                    className="w-4 h-4"
+                    className="w-4 h-4 mt-1 shrink-0"
                   />
                   <span className="ml-4 text-slate-900 dark:text-white">{option}</span>
                 </label>
@@ -254,7 +287,7 @@ export default function ExamMode() {
             <div className="flex justify-between">
               <Button
                 variant="outline"
-                onClick={() => setCurrentQuestionIdx(Math.max(0, currentQuestionIdx - 1))}
+                onClick={handlePrevious}
                 disabled={currentQuestionIdx === 0}
               >
                 Previous
@@ -272,8 +305,12 @@ export default function ExamMode() {
                   )}
                 </Button>
               ) : (
-                <Button onClick={handleNext}>
-                  Next
+                <Button onClick={handleNext} disabled={isNavigating}>
+                  {isNavigating ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    "Next"
+                  )}
                 </Button>
               )}
             </div>

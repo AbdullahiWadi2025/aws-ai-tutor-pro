@@ -221,3 +221,7 @@
 
 ## Improvement: Dashboard Real-Time Updates
 - [x] Invalidate progress/dashboard queries after exam submission so dashboard reflects latest data without a manual page refresh; also enabled refetchOnWindowFocus globally
+
+## Bug Fix: Exam Mode Start & Navigation
+- [x] Fix both SAA and CLF exams starting simultaneously — added separate startingCert state so each button tracks its own loading independently; guard prevents double-start
+- [x] Fix Next button not advancing — changed submitAnswer to fire-and-forget (non-blocking) so navigation always happens even if the network call is slow; added isNavigating guard to prevent double-clicks
