@@ -187,3 +187,12 @@
 - [x] Write tests for trial system and beta codes (15 new tests)
 - [x] All 52 tests passing
 - [x] Fixed exam score calculation bug (was dividing by hardcoded 65)
+
+## Trial Strategy Decision
+- [x] Decided to keep 14-day default trial + share LAUNCH2026 (30-day extension code) for launch promo
+
+## Beta Code Reconfiguration (Small Launch)
+- [x] Reduce LAUNCH2026 from 100 to 25 uses (30-day extension)
+- [x] Reduce BETATESTER from 50 to 10 uses (60-day extension, VIP tier)
+- [x] Deactivate REDDIT14 and AWSPREP codes (reserved for later)
+- [x] Verify admin panel reflects new code limits

@@ -182,12 +182,12 @@ describe("Beta Launch Features", () => {
       expect(trial).toEqual(existingTrial);
     });
 
-    it("should calculate 14-day trial end correctly", () => {
+    it("should calculate 30-day trial end correctly", () => {
       const start = new Date();
       const end = new Date(start);
-      end.setDate(end.getDate() + 14);
+      end.setDate(end.getDate() + 30);
       const diffDays = Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
-      expect(diffDays).toBe(14);
+      expect(diffDays).toBe(30);
     });
   });
 });
