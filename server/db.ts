@@ -90,6 +90,14 @@ export async function getUserByOpenId(openId: string) {
 }
 
 // AWS Questions queries
+function parseQuestionFields<T extends { options: unknown; correctAnswers: unknown }>(q: T): T {
+  return {
+    ...q,
+    options: Array.isArray(q.options) ? q.options : JSON.parse(q.options as string),
+    correctAnswers: Array.isArray(q.correctAnswers) ? q.correctAnswers : JSON.parse(q.correctAnswers as string),
+  };
+}
+
 export async function getQuestionsByCertification(certification: "SAA-C03" | "CLF-C02", limit: number = 65) {
   const db = await getDb();
   if (!db) return [];
@@ -100,7 +108,7 @@ export async function getQuestionsByCertification(certification: "SAA-C03" | "CL
     .where(eq(awsQuestions.certification, certification))
     .limit(limit);
   
-  return result;
+  return result.map(parseQuestionFields);
 }
 
 export async function getQuestionsByTopic(certification: "SAA-C03" | "CLF-C02", topic: string) {
@@ -116,7 +124,7 @@ export async function getQuestionsByTopic(certification: "SAA-C03" | "CLF-C02", 
       eq(awsQuestions.topic, topic)
     ));
   
-  return result;
+  return result.map(parseQuestionFields);
 }
 
 // Exam Session queries
