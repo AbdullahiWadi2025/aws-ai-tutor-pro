@@ -1,6 +1,6 @@
-import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users, awsQuestions, examSessions, userProgress, topicPerformance, userAnswers } from "../drizzle/schema";
+import { InsertUser, users, awsQuestions, examSessions, userProgress, topicPerformance, userAnswers, achievements, userAchievements, studyRecommendations } from "../drizzle/schema";
+import { eq, and, asc } from "drizzle-orm";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -364,4 +364,114 @@ export async function getPaymentHistoryByUser(userId: number) {
     .where(eq(paymentHistory.userId, userId));
   
   return result;
+}
+
+
+// Gamification & Achievements
+
+export async function getAchievements() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(achievements);
+}
+
+export async function getUserAchievements(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(userAchievements).where(eq(userAchievements.userId, userId));
+}
+
+export async function unlockAchievement(userId: number, achievementId: number) {
+  const db = await getDb();
+  if (!db) return;
+  
+  // Check if already unlocked
+  const existing = await db
+    .select()
+    .from(userAchievements)
+    .where(and(eq(userAchievements.userId, userId), eq(userAchievements.achievementId, achievementId)));
+  
+  if (existing.length > 0) return; // Already unlocked
+  
+  await db.insert(userAchievements).values({
+    userId,
+    achievementId,
+  });
+}
+
+// Study Recommendations
+
+export async function getStudyRecommendations(userId: number, certification: "SAA-C03" | "CLF-C02") {
+  const db = await getDb();
+  if (!db) return [];
+  
+  return db
+    .select()
+    .from(studyRecommendations)
+    .where(and(eq(studyRecommendations.userId, userId), eq(studyRecommendations.certification, certification)))
+    .orderBy(asc(studyRecommendations.priority));
+}
+
+export async function getWeakTopics(userId: number, certification: "SAA-C03" | "CLF-C02", limit: number = 5) {
+  const db = await getDb();
+  if (!db) return [];
+  
+  // Get topics with lowest accuracy
+  return db
+    .select()
+    .from(topicPerformance)
+    .where(and(eq(topicPerformance.userId, userId), eq(topicPerformance.certification, certification)))
+    .orderBy(asc(topicPerformance.accuracy))
+    .limit(limit);
+}
+
+export async function createStudyRecommendation(data: {
+  userId: number;
+  certification: "SAA-C03" | "CLF-C02";
+  topic: string;
+  priority: number;
+  reason: string;
+  accuracy?: string;
+}) {
+  const db = await getDb();
+  if (!db) return;
+  
+  await db.insert(studyRecommendations).values({
+    userId: data.userId,
+    certification: data.certification,
+    topic: data.topic,
+    priority: data.priority,
+    reason: data.reason,
+    accuracy: data.accuracy || undefined,
+  });
+}
+
+export async function generateRecommendations(userId: number, certification: "SAA-C03" | "CLF-C02") {
+  // Get weak topics
+  const weakTopics = await getWeakTopics(userId, certification, 10);
+  
+  // Clear existing recommendations
+  const db = await getDb();
+  if (!db) return;
+  
+  await db
+    .delete(studyRecommendations)
+    .where(and(eq(studyRecommendations.userId, userId), eq(studyRecommendations.certification, certification)));
+  
+  // Create new recommendations
+  weakTopics.forEach((topic, index) => {
+    const accuracy = topic.accuracy ? parseFloat(topic.accuracy.toString()) : 0;
+    const reason = accuracy < 50 
+      ? `You're struggling with ${topic.topic}. Focus here to improve your score.`
+      : `You could improve your ${topic.topic} knowledge. Practice more questions in this area.`;
+    
+    createStudyRecommendation({
+      userId,
+      certification,
+      topic: topic.topic,
+      priority: index + 1,
+      reason,
+      accuracy: accuracy.toString(),
+    });
+  });
 }

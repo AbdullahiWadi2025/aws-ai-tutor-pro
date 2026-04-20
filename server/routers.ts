@@ -7,6 +7,7 @@ import { invokeLLM } from "./_core/llm";
 import * as db from "./db";
 import { adminRouter } from "./admin";
 import { stripeRouter } from "./stripe-router";
+import { gamificationRouter } from "./gamification-router";
 import { requirePremiumAccess, canAccessFeature } from "./premium-access";
 
 export const appRouter = router({
@@ -203,6 +204,9 @@ export const appRouter = router({
 
   // Stripe payment procedures
   stripe: stripeRouter,
+
+  // Gamification procedures
+  gamification: gamificationRouter,
 });
 
 export type AppRouter = typeof appRouter;

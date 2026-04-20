@@ -5,6 +5,8 @@ import { useLocation } from "wouter";
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 import { BookOpen, Zap, Brain, BarChart3, LogOut, Settings } from "lucide-react";
 import { trpc } from "@/lib/trpc";
+import { StudyRecommendations } from "@/components/StudyRecommendations";
+import { AchievementsCard } from "@/components/AchievementsCard";
 
 export default function Dashboard() {
   const { user, logout } = useAuth();
@@ -185,6 +187,16 @@ export default function Dashboard() {
             </p>
             <Button className="w-full">Chat with AI</Button>
           </Card>
+        </div>
+
+        {/* Gamification & Recommendations Section */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+          <div className="lg:col-span-2">
+            <StudyRecommendations certification="SAA-C03" />
+          </div>
+          <div>
+            <AchievementsCard />
+          </div>
         </div>
       </main>
     </div>

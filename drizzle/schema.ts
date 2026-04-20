@@ -154,3 +154,43 @@ export const paymentHistory = mysqlTable("payment_history", {
 
 export type PaymentHistory = typeof paymentHistory.$inferSelect;
 export type InsertPaymentHistory = typeof paymentHistory.$inferInsert;
+
+// Achievements/Badges Table
+export const achievements = mysqlTable("achievements", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 255 }).notNull(), // "Passed 5 Exams", "Perfect Score", "7-Day Streak"
+  description: text("description").notNull(),
+  icon: varchar("icon", { length: 255 }), // emoji or icon name
+  requirement: varchar("requirement", { length: 255 }).notNull(), // criteria for unlocking
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type Achievement = typeof achievements.$inferSelect;
+export type InsertAchievement = typeof achievements.$inferInsert;
+
+// User Achievements Table (tracks which badges user has earned)
+export const userAchievements = mysqlTable("user_achievements", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("user_id").notNull(),
+  achievementId: int("achievement_id").notNull(),
+  unlockedAt: timestamp("unlocked_at").defaultNow().notNull(),
+});
+
+export type UserAchievement = typeof userAchievements.$inferSelect;
+export type InsertUserAchievement = typeof userAchievements.$inferInsert;
+
+// Study Recommendations Table
+export const studyRecommendations = mysqlTable("study_recommendations", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("user_id").notNull(),
+  certification: mysqlEnum("certification", ["SAA-C03", "CLF-C02"]).notNull(),
+  topic: varchar("topic", { length: 255 }).notNull(),
+  priority: int("priority").notNull(), // 1 = highest, lower = less important
+  reason: text("reason").notNull(), // why this topic is recommended
+  accuracy: decimal("accuracy", { precision: 5, scale: 2 }), // user's current accuracy on this topic
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+
+export type StudyRecommendation = typeof studyRecommendations.$inferSelect;
+export type InsertStudyRecommendation = typeof studyRecommendations.$inferInsert;
