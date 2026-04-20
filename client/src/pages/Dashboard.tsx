@@ -15,8 +15,7 @@ export default function Dashboard() {
   const { data: examHistory } = trpc.progress.getExamHistory.useQuery({});
 
   const handleLogout = async () => {
-    await trpc.auth.logout.useMutation().mutateAsync();
-    logout();
+    await logout();
     navigate("/");
   };
 

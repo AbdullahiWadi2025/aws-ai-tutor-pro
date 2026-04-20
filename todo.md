@@ -204,3 +204,6 @@
 - [x] Delete duplicate user rows (475 phantom rows with null name/email, same openId)
 - [x] Add unique constraint on users.openId to prevent future duplicates
 - [x] Update Drizzle schema to reflect the unique constraint (was already defined, missing from DB — now applied)
+
+## Bug Fix: Logout Not Working
+- [x] Fix logout button doing nothing when clicked (was calling useMutation inside event handler — fixed to use logout() from useAuth directly)
