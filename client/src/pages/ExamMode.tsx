@@ -23,10 +23,11 @@ export default function ExamMode() {
   const [questions, setQuestions] = useState<ExamQuestion[]>([]);
   const [sessionId, setSessionId] = useState<number | null>(null);
   const [startTime, setStartTime] = useState<number>(0);
-  // Track which cert button is loading independently
   const [startingCert, setStartingCert] = useState<"SAA-C03" | "CLF-C02" | null>(null);
   const [isNavigating, setIsNavigating] = useState(false);
-  const submitExamCalledRef = useRef(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  // Track whether the timer has ever been positive (prevents auto-submit on initial render)
+  const timerEverStartedRef = useRef(false);
 
   const utils = trpc.useUtils();
   const startExamMutation = trpc.exam.startExam.useMutation();
@@ -36,6 +37,8 @@ export default function ExamMode() {
   // Timer effect
   useEffect(() => {
     if (!examStarted || timeLeft <= 0) return;
+
+    timerEverStartedRef.current = true;
 
     const timer = setInterval(() => {
       setTimeLeft(prev => {
@@ -50,19 +53,25 @@ export default function ExamMode() {
     return () => clearInterval(timer);
   }, [examStarted, timeLeft]);
 
-  // Auto-submit when time runs out (guard against double-call)
+  // Auto-submit when time runs out — only fires if the timer actually counted down
   useEffect(() => {
-    if (timeLeft === 0 && examStarted && sessionId && !submitExamCalledRef.current) {
-      submitExamCalledRef.current = true;
+    if (
+      timeLeft === 0 &&
+      examStarted &&
+      sessionId &&
+      timerEverStartedRef.current &&
+      !isSubmitting
+    ) {
       handleSubmitExam();
     }
-  }, [timeLeft, examStarted, sessionId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [timeLeft]);
 
   const handleStartExam = async (cert: "SAA-C03" | "CLF-C02") => {
-    // Prevent starting if already starting one
     if (startingCert !== null) return;
 
     setStartingCert(cert);
+    timerEverStartedRef.current = false;
     try {
       const result = await startExamMutation.mutateAsync({
         certification: cert,
@@ -77,7 +86,7 @@ export default function ExamMode() {
       setStartTime(Date.now());
       setCurrentQuestionIdx(0);
       setSelectedAnswers({});
-      submitExamCalledRef.current = false;
+      setIsSubmitting(false);
     } catch (error) {
       console.error("Failed to start exam:", error);
     } finally {
@@ -109,18 +118,14 @@ export default function ExamMode() {
     if (!currentQuestion || !sessionId || isNavigating) return;
 
     setIsNavigating(true);
-    try {
-      // Fire-and-forget: submit the answer but don't block navigation on failure
-      submitAnswerMutation.mutate({
-        sessionId,
-        questionId: currentQuestion.id,
-        userAnswer: selectedAnswers[currentQuestion.id] || [],
-      });
-    } catch {
-      // Non-blocking — we still advance the question
-    }
 
-    // Always advance to the next question
+    // Fire-and-forget: save the answer but don't block navigation
+    submitAnswerMutation.mutate({
+      sessionId,
+      questionId: currentQuestion.id,
+      userAnswer: selectedAnswers[currentQuestion.id] || [],
+    });
+
     setCurrentQuestionIdx(prev => Math.min(prev + 1, questions.length - 1));
     setIsNavigating(false);
   };
@@ -130,12 +135,11 @@ export default function ExamMode() {
   };
 
   const handleSubmitExam = async () => {
-    if (!sessionId || submitExamCalledRef.current) return;
-    submitExamCalledRef.current = true;
+    if (!sessionId || isSubmitting) return;
+    setIsSubmitting(true);
 
     try {
-      // Await the last question's answer before submitting the exam
-      // so the score calculation sees all answers
+      // Await the last question's answer so the score sees it
       const currentQuestion = questions[currentQuestionIdx];
       if (currentQuestion) {
         try {
@@ -145,24 +149,20 @@ export default function ExamMode() {
             userAnswer: selectedAnswers[currentQuestion.id] || [],
           });
         } catch {
-          // Non-critical — proceed with submission even if last answer fails
+          // Non-critical — proceed even if the last answer save fails
         }
       }
 
       const timeTaken = Math.floor((Date.now() - startTime) / 1000);
-      await submitExamMutation.mutateAsync({
-        sessionId,
-        timeTaken,
-      });
+      await submitExamMutation.mutateAsync({ sessionId, timeTaken });
 
-      // Invalidate all progress and dashboard queries so the dashboard reflects the new exam immediately
+      // Invalidate progress so the dashboard refreshes
       await utils.progress.invalidate();
 
       navigate(`/exam/${sessionId}/results`);
     } catch (error) {
       console.error("Failed to submit exam:", error);
-      // Reset the guard so user can retry
-      submitExamCalledRef.current = false;
+      setIsSubmitting(false);
     }
   };
 
@@ -296,14 +296,14 @@ export default function ExamMode() {
               <Button
                 variant="outline"
                 onClick={handlePrevious}
-                disabled={currentQuestionIdx === 0}
+                disabled={currentQuestionIdx === 0 || isSubmitting}
               >
                 Previous
               </Button>
 
               {currentQuestionIdx === questions.length - 1 ? (
-                <Button onClick={handleSubmitExam} disabled={submitExamMutation.isPending}>
-                  {submitExamMutation.isPending ? (
+                <Button onClick={handleSubmitExam} disabled={isSubmitting}>
+                  {isSubmitting ? (
                     <>
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                       Submitting...
@@ -313,7 +313,7 @@ export default function ExamMode() {
                   )}
                 </Button>
               ) : (
-                <Button onClick={handleNext} disabled={isNavigating}>
+                <Button onClick={handleNext} disabled={isNavigating || isSubmitting}>
                   {isNavigating ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
                   ) : (

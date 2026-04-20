@@ -228,3 +228,7 @@
 
 ## Bug Fix: Exam Submission Stuck on Loading
 - [x] Fix exam getting stuck on loading spinner after clicking Submit Exam — root cause was createUserAnswer opening a new raw mysql2 connection per answer (slow/hanging); fixed to use shared Drizzle pool with sql template tag; also fixed handleSubmitExam to properly await last answer before calling submitExam
+
+## Bug Fix: Exam Results "Session Not Found"
+- [x] Fix results page showing "Exam session not found" — added proper error/loading states to ExamResults.tsx with retry:1
+- [x] Add proper error UI to ExamResults page instead of infinite loading

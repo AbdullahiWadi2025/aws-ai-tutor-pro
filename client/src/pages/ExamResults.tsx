@@ -1,27 +1,32 @@
 import { Button } from "@/components/ui/button";
 import { useLocation, useRoute } from "wouter";
-import { ArrowLeft, CheckCircle, XCircle } from "lucide-react";
+import { ArrowLeft, CheckCircle, XCircle, AlertCircle } from "lucide-react";
 import { trpc } from "@/lib/trpc";
-import { useEffect, useState } from "react";
 
 export default function ExamResults() {
   const [, navigate] = useLocation();
   const [match, params] = useRoute("/exam/:sessionId/results");
   const sessionId = params?.sessionId ? parseInt(params.sessionId) : null;
-  const [results, setResults] = useState<any>(null);
 
-  const { data: examResults } = trpc.exam.getResults.useQuery(
+  const { data: results, isLoading, error } = trpc.exam.getResults.useQuery(
     { sessionId: sessionId || 0 },
-    { enabled: !!sessionId }
+    { enabled: !!sessionId, retry: 1 }
   );
 
-  useEffect(() => {
-    if (examResults) {
-      setResults(examResults);
-    }
-  }, [examResults]);
+  if (!match || !sessionId) {
+    return (
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-900 p-4 flex items-center justify-center">
+        <div className="text-center">
+          <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">Invalid Session</h2>
+          <p className="text-slate-600 dark:text-slate-400 mb-6">No exam session was specified.</p>
+          <Button onClick={() => navigate("/exam")}>Take an Exam</Button>
+        </div>
+      </div>
+    );
+  }
 
-  if (!results) {
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-slate-50 dark:bg-slate-900 p-4 flex items-center justify-center">
         <p className="text-slate-600 dark:text-slate-300">Loading results...</p>
@@ -29,7 +34,25 @@ export default function ExamResults() {
     );
   }
 
-  const passPercentage = Math.round((results.correctAnswers / results.totalQuestions) * 100);
+  if (error || !results) {
+    return (
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-900 p-4 flex items-center justify-center">
+        <div className="text-center">
+          <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">Results Not Found</h2>
+          <p className="text-slate-600 dark:text-slate-400 mb-6">
+            We couldn't load the results for this exam session. It may have been deleted or the submission did not complete.
+          </p>
+          <div className="flex gap-4 justify-center">
+            <Button onClick={() => navigate("/dashboard")}>Go to Dashboard</Button>
+            <Button variant="outline" onClick={() => navigate("/exam")}>Take Another Exam</Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const passPercentage = Math.round(((results.correctAnswers ?? 0) / Math.max(results.totalQuestions ?? 1, 1)) * 100);
   const isPassed = results.isPassed;
 
   return (
@@ -70,7 +93,7 @@ export default function ExamResults() {
           <div className="bg-white dark:bg-slate-800 p-6 rounded-lg text-center">
             <p className="text-slate-600 dark:text-slate-400 text-sm mb-2">Time Taken</p>
             <p className="text-4xl font-bold text-slate-900 dark:text-white">
-              {Math.floor(results.timeTaken / 60)}m {results.timeTaken % 60}s
+              {Math.floor((results.timeTaken ?? 0) / 60)}m {(results.timeTaken ?? 0) % 60}s
             </p>
           </div>
 
