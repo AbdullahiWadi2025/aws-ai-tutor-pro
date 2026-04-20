@@ -218,3 +218,6 @@
 
 ## Bug Fix: Exam Score Calculation
 - [x] Fix exam score showing impossible values (325%, 211/65 correct) — added UNIQUE constraint on (exam_session_id, question_id), cleaned up duplicate rows, changed createUserAnswer to upsert via ON DUPLICATE KEY UPDATE
+
+## Improvement: Dashboard Real-Time Updates
+- [x] Invalidate progress/dashboard queries after exam submission so dashboard reflects latest data without a manual page refresh; also enabled refetchOnWindowFocus globally

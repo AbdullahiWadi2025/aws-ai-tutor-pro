@@ -23,6 +23,7 @@ export default function ExamMode() {
   const [sessionId, setSessionId] = useState<number | null>(null);
   const [startTime, setStartTime] = useState<number>(0);
 
+  const utils = trpc.useUtils();
   const startExamMutation = trpc.exam.startExam.useMutation();
   const submitAnswerMutation = trpc.exam.submitAnswer.useMutation();
   const submitExamMutation = trpc.exam.submitExam.useMutation();
@@ -116,6 +117,9 @@ export default function ExamMode() {
         sessionId,
         timeTaken,
       });
+
+      // Invalidate all progress and dashboard queries so the dashboard reflects the new exam immediately
+      await utils.progress.invalidate();
 
       navigate(`/exam/${sessionId}/results`);
     } catch (error) {

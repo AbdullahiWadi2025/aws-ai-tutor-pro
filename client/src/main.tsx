@@ -8,7 +8,16 @@ import App from "./App";
 import { getLoginUrl } from "./const";
 import "./index.css";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      // Refetch when the user returns to the browser tab — ensures dashboard is fresh after completing an exam
+      refetchOnWindowFocus: true,
+      // Keep data fresh for 30 seconds before considering it stale
+      staleTime: 30_000,
+    },
+  },
+});
 
 const redirectToLoginIfUnauthorized = (error: unknown) => {
   if (!(error instanceof TRPCClientError)) return;
