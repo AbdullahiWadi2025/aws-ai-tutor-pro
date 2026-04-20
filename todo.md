@@ -248,3 +248,7 @@
 - [x] Build ExamReview page showing each question with correct/incorrect highlighting and explanation
 - [x] Add "Review Answers" button to ExamResults page
 - [x] Add "Review" link to exam history table on Dashboard
+
+## Bug Fix: Practice Mode
+- [x] Fix correct answer not being shown after submitting an answer in practice mode — was using parseInt() on letter codes; fixed to map letters to option text via LETTERS array index
+- [x] Fix last question in practice mode redirecting to dashboard — replaced with a full summary screen showing score, correct/incorrect counts, and weak topics to review
