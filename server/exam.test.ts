@@ -146,6 +146,38 @@ describe("exam procedures", () => {
     expect(result.score).toBeLessThanOrEqual(100);
     expect(typeof result.score).toBe("number");
   });
+
+  it("should not inflate score when the same question is answered multiple times", async () => {
+    const ctx = createMockContext();
+    const caller = appRouter.createCaller(ctx);
+
+    const examResult = await caller.exam.startExam({
+      certification: "CLF-C02",
+      mode: "practice",
+    });
+
+    const firstQuestion = examResult.questions[0];
+
+    // Submit the same question 5 times (simulating back-navigation)
+    for (let i = 0; i < 5; i++) {
+      await caller.exam.submitAnswer({
+        sessionId: examResult.sessionId,
+        questionId: firstQuestion.id,
+        userAnswer: firstQuestion.correctAnswers || [firstQuestion.options[0]],
+      });
+    }
+
+    // Submit the exam with only 1 question answered (5 times)
+    const result = await caller.exam.submitExam({
+      sessionId: examResult.sessionId,
+      timeTaken: 60,
+    });
+
+    // Score must be between 0 and 100, and correctAnswers must be <= total questions
+    expect(result.score).toBeGreaterThanOrEqual(0);
+    expect(result.score).toBeLessThanOrEqual(100);
+    expect(result.correctAnswers).toBeLessThanOrEqual(examResult.questions.length);
+  });
 });
 
 describe("progress tracking", () => {

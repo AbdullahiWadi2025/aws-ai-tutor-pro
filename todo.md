@@ -215,3 +215,6 @@
 ## Bug Fix: options.map TypeError
 - [x] Fix TypeError: options.map is not a function — fixed db.ts to always JSON.parse options/correctAnswers before returning
 - [x] Replace all questions with harder, longer, scenario-based AWS exam-style questions — 65 SAA-C03 and 57 CLF-C02 scenario-based questions now in DB
+
+## Bug Fix: Exam Score Calculation
+- [x] Fix exam score showing impossible values (325%, 211/65 correct) — added UNIQUE constraint on (exam_session_id, question_id), cleaned up duplicate rows, changed createUserAnswer to upsert via ON DUPLICATE KEY UPDATE
