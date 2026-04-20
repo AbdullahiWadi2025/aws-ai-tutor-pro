@@ -1,6 +1,6 @@
 import { drizzle } from "drizzle-orm/mysql2";
 import { InsertUser, users, awsQuestions, examSessions, userProgress, topicPerformance, userAnswers, achievements, userAchievements, studyRecommendations } from "../drizzle/schema";
-import { eq, and, asc } from "drizzle-orm";
+import { eq, and, asc, sql } from "drizzle-orm";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -254,30 +254,18 @@ export async function createUserAnswer(data: {
 }) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  
-  // Use upsert to handle re-answering the same question (navigation back and forth)
+
+  // Use the shared Drizzle connection pool with a raw sql template tag
   // ON DUPLICATE KEY UPDATE ensures only the latest answer is stored per (session, question)
-  const mysql2 = await import('mysql2/promise');
-  const conn = await mysql2.createConnection(process.env.DATABASE_URL!);
-  try {
-    await conn.execute(
-      `INSERT INTO user_answers (exam_session_id, question_id, user_answer, is_correct, time_spent)
-       VALUES (?, ?, ?, ?, ?)
-       ON DUPLICATE KEY UPDATE
-         user_answer = VALUES(user_answer),
-         is_correct = VALUES(is_correct),
-         time_spent = VALUES(time_spent)`,
-      [
-        data.examSessionId,
-        data.questionId,
-        JSON.stringify(data.userAnswer),
-        data.isCorrect ? 1 : 0,
-        data.timeSpent ?? null
-      ]
-    );
-  } finally {
-    await conn.end();
-  }
+  await db.execute(
+    sql`INSERT INTO user_answers (exam_session_id, question_id, user_answer, is_correct, time_spent)
+        VALUES (${data.examSessionId}, ${data.questionId}, ${JSON.stringify(data.userAnswer)}, ${data.isCorrect ? 1 : 0}, ${data.timeSpent ?? null})
+        ON DUPLICATE KEY UPDATE
+          user_answer = VALUES(user_answer),
+          is_correct = VALUES(is_correct),
+          time_spent = VALUES(time_spent)`
+  );
+
   return { success: true };
 }
 

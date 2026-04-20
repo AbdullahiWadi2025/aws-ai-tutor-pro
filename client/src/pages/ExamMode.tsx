@@ -130,17 +130,23 @@ export default function ExamMode() {
   };
 
   const handleSubmitExam = async () => {
-    if (!sessionId) return;
+    if (!sessionId || submitExamCalledRef.current) return;
+    submitExamCalledRef.current = true;
 
     try {
-      // Submit any unanswered current question first
+      // Await the last question's answer before submitting the exam
+      // so the score calculation sees all answers
       const currentQuestion = questions[currentQuestionIdx];
-      if (currentQuestion && sessionId) {
-        submitAnswerMutation.mutate({
-          sessionId,
-          questionId: currentQuestion.id,
-          userAnswer: selectedAnswers[currentQuestion.id] || [],
-        });
+      if (currentQuestion) {
+        try {
+          await submitAnswerMutation.mutateAsync({
+            sessionId,
+            questionId: currentQuestion.id,
+            userAnswer: selectedAnswers[currentQuestion.id] || [],
+          });
+        } catch {
+          // Non-critical — proceed with submission even if last answer fails
+        }
       }
 
       const timeTaken = Math.floor((Date.now() - startTime) / 1000);
@@ -155,6 +161,8 @@ export default function ExamMode() {
       navigate(`/exam/${sessionId}/results`);
     } catch (error) {
       console.error("Failed to submit exam:", error);
+      // Reset the guard so user can retry
+      submitExamCalledRef.current = false;
     }
   };
 

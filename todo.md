@@ -225,3 +225,6 @@
 ## Bug Fix: Exam Mode Start & Navigation
 - [x] Fix both SAA and CLF exams starting simultaneously — added separate startingCert state so each button tracks its own loading independently; guard prevents double-start
 - [x] Fix Next button not advancing — changed submitAnswer to fire-and-forget (non-blocking) so navigation always happens even if the network call is slow; added isNavigating guard to prevent double-clicks
+
+## Bug Fix: Exam Submission Stuck on Loading
+- [x] Fix exam getting stuck on loading spinner after clicking Submit Exam — root cause was createUserAnswer opening a new raw mysql2 connection per answer (slow/hanging); fixed to use shared Drizzle pool with sql template tag; also fixed handleSubmitExam to properly await last answer before calling submitExam
