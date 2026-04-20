@@ -226,26 +226,22 @@ export const appRouter = router({
         const LETTERS = ["A", "B", "C", "D"];
         const answerMap = new Map(userAnswerRows.map(a => [a.questionId, a]));
 
-        // If we have stored question IDs (new sessions), use them; otherwise fall back to answered questions only
+        // Determine which question IDs to show:
+        // 1. If exam_session_questions is populated (new sessions), use that order
+        // 2. Else if the user answered some questions, show those (legacy sessions)
+        // 3. Else fall back to ALL questions for the certification (very old sessions)
         let questionIds: number[];
         if (sessionQuestionIds.length > 0) {
           questionIds = sessionQuestionIds;
-        } else {
-          // Legacy sessions: only show answered questions
+        } else if (userAnswerRows.length > 0) {
+          // Legacy sessions: show answered questions only
           questionIds = userAnswerRows.map(a => a.questionId);
-        }
-
-        if (!questionIds.length) {
-          return {
-            sessionId: input.sessionId,
-            certification: session.certification,
-            score: session.score,
-            isPassed: session.isPassed,
-            correctAnswers: session.correctAnswers,
-            totalQuestions: session.totalQuestions,
-            timeTaken: session.timeTaken,
-            questions: [],
-          };
+        } else {
+          // Session has no question data at all — not reviewable
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "This exam session does not have review data available. Only completed exam sessions can be reviewed.",
+          });
         }
 
         // Fetch only the questions that were in this session

@@ -1,6 +1,6 @@
 import { drizzle } from "drizzle-orm/mysql2";
 import { InsertUser, users, awsQuestions, examSessions, userProgress, topicPerformance, userAnswers, achievements, userAchievements, studyRecommendations } from "../drizzle/schema";
-import { eq, and, asc, sql } from "drizzle-orm";
+import { eq, and, asc, desc, isNotNull, sql } from "drizzle-orm";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -197,20 +197,24 @@ export async function getExamSessionById(sessionId: number) {
 export async function getExamSessionsByUser(userId: number, certification?: "SAA-C03" | "CLF-C02") {
   const db = await getDb();
   if (!db) return [];
-  
-  const { and } = await import("drizzle-orm");
-  
+
+  // Only return completed exam-mode sessions (mode='exam', score IS NOT NULL)
+  // so the dashboard and progress pages only show real, reviewable exams
+  const conditions = [
+    eq(examSessions.userId, userId),
+    eq(examSessions.mode, "exam"),
+    isNotNull(examSessions.score),
+  ];
+
   if (certification) {
-    return db
-      .select()
-      .from(examSessions)
-      .where(and(
-        eq(examSessions.userId, userId),
-        eq(examSessions.certification, certification)
-      ));
+    conditions.push(eq(examSessions.certification, certification));
   }
-  
-  return db.select().from(examSessions).where(eq(examSessions.userId, userId));
+
+  return db
+    .select()
+    .from(examSessions)
+    .where(and(...conditions))
+    .orderBy(desc(examSessions.createdAt));
 }
 
 // User Progress queries

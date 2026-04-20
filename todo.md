@@ -252,3 +252,6 @@
 ## Bug Fix: Practice Mode
 - [x] Fix correct answer not being shown after submitting an answer in practice mode — was using parseInt() on letter codes; fixed to map letters to option text via LETTERS array index
 - [x] Fix last question in practice mode redirecting to dashboard — replaced with a full summary screen showing score, correct/incorrect counts, and weak topics to review
+
+## Bug Fix: Exam Review Page Blank
+- [x] Fix exam review page showing blank/no questions — fixed getExamSessionsByUser to only return completed exam-mode sessions (mode='exam', score IS NOT NULL); fixed getReview to use user_answers as fallback when exam_session_questions is empty (legacy sessions), and all cert questions as last resort
