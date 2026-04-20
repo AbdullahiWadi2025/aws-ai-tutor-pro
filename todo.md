@@ -242,3 +242,9 @@
 ## Feature: Skipped Questions Tracker
 - [x] Add skipped questions panel in ExamMode — Question Navigator modal with color-coded grid, flag for review, unanswered list, and jump-to-question
 - [ ] Add skipped questions tracker to PracticeMode as well
+
+## Feature: Exam Review
+- [x] Add getExamReview tRPC procedure returning all questions with user answers, correct answers, and explanations
+- [x] Build ExamReview page showing each question with correct/incorrect highlighting and explanation
+- [x] Add "Review Answers" button to ExamResults page
+- [x] Add "Review" link to exam history table on Dashboard

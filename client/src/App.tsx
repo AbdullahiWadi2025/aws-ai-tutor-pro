@@ -9,6 +9,7 @@ import Dashboard from "./pages/Dashboard";
 import ExamMode from "./pages/ExamMode";
 import PracticeMode from "./pages/PracticeMode";
 import ExamResults from "./pages/ExamResults";
+import ExamReview from "./pages/ExamReview";
 import AITutor from "./pages/AITutor";
 import Progress from "./pages/Progress";
 import AdminDashboard from "./pages/AdminDashboard";
@@ -43,6 +44,7 @@ function Router() {
           <Route path="/exam" component={ExamMode} />
           <Route path="/practice" component={PracticeMode} />
           <Route path="/exam/:sessionId/results" component={ExamResults} />
+          <Route path="/exam/:sessionId/review" component={ExamReview} />
           <Route path="/ai-tutor" component={AITutor} />
           <Route path="/progress" component={Progress} />
           <Route path="/subscription" component={SubscriptionManagement} />

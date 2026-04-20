@@ -283,6 +283,31 @@ export async function createUserAnswer(data: {
   return { success: true };
 }
 
+// Exam Session Questions queries
+export async function saveExamSessionQuestions(examSessionId: number, questions: { questionId: number; questionOrder: number }[]) {
+  const db = await getDb();
+  if (!db) return;
+  if (!questions.length) return;
+
+  // Bulk insert all question IDs for this session
+  const values = questions.map(q => ({ examSessionId, questionId: q.questionId, questionOrder: q.questionOrder }));
+  await db.execute(
+    sql`INSERT IGNORE INTO exam_session_questions (exam_session_id, question_id, question_order)
+        VALUES ${sql.join(values.map(v => sql`(${v.examSessionId}, ${v.questionId}, ${v.questionOrder})`), sql`, `)}`
+  );
+}
+
+export async function getExamSessionQuestionIds(examSessionId: number): Promise<number[]> {
+  const db = await getDb();
+  if (!db) return [];
+
+  const result = await db.execute(
+    sql`SELECT question_id FROM exam_session_questions WHERE exam_session_id = ${examSessionId} ORDER BY question_order ASC`
+  );
+  const rows = (result as any)[0] as Array<{ question_id: number }>;
+  return rows.map(r => r.question_id);
+}
+
 // Import subscription tables
 import { subscriptionPlans, userSubscriptions, paymentHistory } from "../drizzle/schema";
 

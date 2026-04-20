@@ -2,6 +2,7 @@ import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
+import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { invokeLLM } from "./_core/llm";
 import * as db from "./db";
@@ -59,6 +60,9 @@ export const appRouter = router({
         
         // Extract session ID from result — createExamSession now returns { insertId }
         const sessionId = result.insertId;
+
+        // Persist the question set so the review page can reconstruct the full exam including skipped questions
+        await db.saveExamSessionQuestions(sessionId, questions.map((q, idx) => ({ questionId: q.id, questionOrder: idx + 1 })));
         
         return {
           sessionId,
@@ -202,6 +206,88 @@ export const appRouter = router({
           totalQuestions: session.totalQuestions,
           timeTaken: session.timeTaken,
           userAnswers,
+        };
+      }),
+
+    getReview: protectedProcedure
+      .input(z.object({
+        sessionId: z.number(),
+      }))
+      .query(async ({ input, ctx }) => {
+        const session = await db.getExamSessionById(input.sessionId);
+        if (!session) throw new TRPCError({ code: "NOT_FOUND", message: "Exam session not found" });
+        if (session.userId !== ctx.user.id) throw new TRPCError({ code: "FORBIDDEN" });
+
+        const [userAnswerRows, sessionQuestionIds] = await Promise.all([
+          db.getUserAnswersBySession(input.sessionId),
+          db.getExamSessionQuestionIds(input.sessionId),
+        ]);
+
+        const LETTERS = ["A", "B", "C", "D"];
+        const answerMap = new Map(userAnswerRows.map(a => [a.questionId, a]));
+
+        // If we have stored question IDs (new sessions), use them; otherwise fall back to answered questions only
+        let questionIds: number[];
+        if (sessionQuestionIds.length > 0) {
+          questionIds = sessionQuestionIds;
+        } else {
+          // Legacy sessions: only show answered questions
+          questionIds = userAnswerRows.map(a => a.questionId);
+        }
+
+        if (!questionIds.length) {
+          return {
+            sessionId: input.sessionId,
+            certification: session.certification,
+            score: session.score,
+            isPassed: session.isPassed,
+            correctAnswers: session.correctAnswers,
+            totalQuestions: session.totalQuestions,
+            timeTaken: session.timeTaken,
+            questions: [],
+          };
+        }
+
+        // Fetch only the questions that were in this session
+        const allQuestions = await db.getQuestionsByCertification(session.certification, 1000);
+        const questionIdSet = new Set(questionIds);
+        const sessionQuestions = allQuestions
+          .filter(q => questionIdSet.has(q.id))
+          .sort((a, b) => questionIds.indexOf(a.id) - questionIds.indexOf(b.id))
+          .map(q => {
+            const opts: string[] = Array.isArray(q.options) ? q.options : JSON.parse(q.options as any);
+            const correctLetters: string[] = Array.isArray(q.correctAnswers) ? q.correctAnswers : JSON.parse(q.correctAnswers as any);
+            const answerRow = answerMap.get(q.id);
+            const userAnswerRaw: string[] = answerRow ? (Array.isArray(answerRow.userAnswer) ? answerRow.userAnswer : JSON.parse(answerRow.userAnswer as any)) : [];
+
+            const userAnswerLetters = userAnswerRaw.map(ans => {
+              if (LETTERS.includes(ans)) return ans;
+              const idx = opts.findIndex(opt => opt.trim() === ans.trim());
+              return idx >= 0 ? LETTERS[idx] : ans;
+            });
+
+            return {
+              id: q.id,
+              questionText: q.questionText,
+              options: opts,
+              correctAnswers: correctLetters,
+              userAnswer: userAnswerLetters,
+              isCorrect: answerRow?.isCorrect ?? false,
+              wasAnswered: !!answerRow && userAnswerLetters.length > 0,
+              explanation: q.explanation,
+              topic: q.topic,
+            };
+          });
+
+        return {
+          sessionId: input.sessionId,
+          certification: session.certification,
+          score: session.score,
+          isPassed: session.isPassed,
+          correctAnswers: session.correctAnswers,
+          totalQuestions: session.totalQuestions,
+          timeTaken: session.timeTaken,
+          questions: sessionQuestions,
         };
       }),
   }),

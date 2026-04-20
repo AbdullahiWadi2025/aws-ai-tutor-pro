@@ -146,6 +146,52 @@ export default function Dashboard() {
           </Card>
         </div>
 
+        {/* Recent Exam History */}
+        {examHistory && examHistory.length > 0 && (
+          <Card className="p-6 mb-6">
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Recent Exams</h3>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b text-left text-slate-500 dark:text-slate-400">
+                    <th className="pb-2 font-medium">Certification</th>
+                    <th className="pb-2 font-medium">Score</th>
+                    <th className="pb-2 font-medium">Result</th>
+                    <th className="pb-2 font-medium">Date</th>
+                    <th className="pb-2 font-medium"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {examHistory.slice(0, 5).map((exam) => (
+                    <tr key={exam.id} className="border-b last:border-0 hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                      <td className="py-3 font-medium text-slate-900 dark:text-white">{exam.certification}</td>
+                      <td className="py-3 text-slate-700 dark:text-slate-300">{parseFloat(exam.score as any) || 0}%</td>
+                      <td className="py-3">
+                        {exam.isPassed
+                          ? <span className="text-green-600 font-medium">Passed</span>
+                          : <span className="text-red-500 font-medium">Not Passed</span>}
+                      </td>
+                      <td className="py-3 text-slate-500 dark:text-slate-400">
+                        {new Date(exam.createdAt).toLocaleDateString()}
+                      </td>
+                      <td className="py-3">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => navigate(`/exam/${exam.id}/review`)}
+                          className="text-blue-600 hover:text-blue-700 text-xs"
+                        >
+                          Review
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+        )}
+
         {/* Action Buttons */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <Card className="p-6 hover:shadow-lg transition-shadow cursor-pointer" onClick={() => navigate("/exam")}>

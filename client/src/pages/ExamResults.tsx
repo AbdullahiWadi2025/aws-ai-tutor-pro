@@ -103,9 +103,12 @@ export default function ExamResults() {
           </div>
         </div>
 
-        <div className="flex gap-4 justify-center">
+        <div className="flex flex-wrap gap-4 justify-center">
           <Button onClick={() => navigate("/dashboard")}>
             Back to Dashboard
+          </Button>
+          <Button variant="outline" onClick={() => navigate(`/exam/${sessionId}/review`)}>
+            Review Answers
           </Button>
           <Button variant="outline" onClick={() => navigate("/exam")}>
             Take Another Exam

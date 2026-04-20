@@ -60,6 +60,18 @@ export const examSessions = mysqlTable("exam_sessions", {
 export type ExamSession = typeof examSessions.$inferSelect;
 export type InsertExamSession = typeof examSessions.$inferInsert;
 
+// Exam Session Questions Table — stores which question IDs were assigned to each exam session
+export const examSessionQuestions = mysqlTable("exam_session_questions", {
+  id: int("id").autoincrement().primaryKey(),
+  examSessionId: int("exam_session_id").notNull(),
+  questionId: int("question_id").notNull(),
+  questionOrder: int("question_order").notNull(), // 1-indexed position in the exam
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type ExamSessionQuestion = typeof examSessionQuestions.$inferSelect;
+export type InsertExamSessionQuestion = typeof examSessionQuestions.$inferInsert;
+
 // User Answers Table
 export const userAnswers = mysqlTable("user_answers", {
   id: int("id").autoincrement().primaryKey(),
