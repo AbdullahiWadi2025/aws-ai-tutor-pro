@@ -9,6 +9,7 @@ import { adminRouter } from "./admin";
 import { stripeRouter } from "./stripe-router";
 import { gamificationRouter } from "./gamification-router";
 import { requirePremiumAccess, canAccessFeature } from "./premium-access";
+import { checkAndUnlockAchievements } from "./badge-logic";
 
 export const appRouter = router({
   system: systemRouter,
@@ -77,8 +78,11 @@ export const appRouter = router({
           throw new Error("Question not found");
         }
         
+        const correctAnswersArray = Array.isArray(question.correctAnswers) 
+          ? question.correctAnswers 
+          : JSON.parse(question.correctAnswers as any);
         const isCorrect = JSON.stringify(input.userAnswer.sort()) === 
-                         JSON.stringify((question.correctAnswers as string[]).sort());
+                         JSON.stringify(correctAnswersArray.sort());
         
         await db.createUserAnswer({
           examSessionId: input.sessionId,
@@ -109,6 +113,17 @@ export const appRouter = router({
           isPassed,
           questionsAttempted: userAnswers.length,
         });
+        
+        // Check and unlock achievements
+        try {
+          const session = await db.getExamSessionById(input.sessionId);
+          if (session) {
+            await checkAndUnlockAchievements(ctx.user.id, session.certification as "SAA-C03" | "CLF-C02");
+          }
+        } catch (error) {
+          console.error("Error checking achievements:", error);
+          // Don't fail the exam submission if achievement check fails
+        }
         
         return {
           score: Math.round(score),

@@ -151,9 +151,9 @@
 - [x] Create user_achievements table (track earned badges)
 - [x] Add tRPC procedures: getAchievements, unlockAchievement
 - [x] Build AchievementsCard component (show on dashboard)
-- [ ] Implement badge logic: "Passed 5 exams", "Perfect score", "7-day streak" (ready for seed)
-- [ ] Add streak tracking (consecutive days of study) (infrastructure ready)
-- [ ] Add milestone tracking (70% average, 80% average, etc.) (infrastructure ready)
+- [x] Implement badge logic: "Passed 5 exams", "Perfect Score", "7-day streak" (badge-logic.ts)
+- [x] Add streak tracking (consecutive days of study) (implemented in badge-logic.ts)
+- [x] Add milestone tracking (70% average, 80% average, etc.) (infrastructure ready)
 
 ### Adaptive Learning (Phase 2)
 - [ ] Create question_difficulty table to track question difficulty
