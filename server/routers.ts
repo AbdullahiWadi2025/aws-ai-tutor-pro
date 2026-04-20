@@ -109,10 +109,26 @@ export const appRouter = router({
           throw new Error("Question not found");
         }
         
-        const correctAnswersArray = Array.isArray(question.correctAnswers) 
+        const correctAnswersArray: string[] = Array.isArray(question.correctAnswers) 
           ? question.correctAnswers 
           : JSON.parse(question.correctAnswers as any);
-        const isCorrect = JSON.stringify(input.userAnswer.sort()) === 
+        
+        const optionsArray: string[] = Array.isArray(question.options)
+          ? question.options
+          : JSON.parse(question.options as any);
+        
+        const LETTERS = ["A", "B", "C", "D"];
+        
+        // Convert user's selected option text to letter codes for comparison
+        const userAnswerLetters = input.userAnswer.map(ans => {
+          // If already a letter, use as-is
+          if (LETTERS.includes(ans)) return ans;
+          // Otherwise find which option index matches
+          const idx = optionsArray.findIndex(opt => opt.trim() === ans.trim());
+          return idx >= 0 ? LETTERS[idx] : ans;
+        });
+        
+        const isCorrect = JSON.stringify(userAnswerLetters.sort()) === 
                          JSON.stringify(correctAnswersArray.sort());
         
         await db.createUserAnswer({

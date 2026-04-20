@@ -235,3 +235,10 @@
 
 ## Feature: Contact Footer
 - [x] Add email (abdulahiyerow@gmail.com) and LinkedIn (linkedin.com/in/abdullahi-wadi) to site footer — added to Home.tsx footer and DashboardLayout sidebar footer
+
+## Bug Fix: Answer Distribution Bias
+- [x] Fix correct answers being biased toward A/B — converted full-text answers to letter codes (A/B/C/D), then balanced distribution to ~25% each
+
+## Feature: Skipped Questions Tracker
+- [x] Add skipped questions panel in ExamMode — Question Navigator modal with color-coded grid, flag for review, unanswered list, and jump-to-question
+- [ ] Add skipped questions tracker to PracticeMode as well
