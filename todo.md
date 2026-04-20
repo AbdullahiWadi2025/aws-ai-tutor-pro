@@ -259,3 +259,6 @@
 ## Feature: Unanswered Questions Warning on Submit
 - [x] Show unanswered question count and list in the submit confirmation dialog in ExamMode
 - [x] Allow user to go back and answer remaining questions or proceed with submission anyway
+
+## Feature: CLF-C02 Beginner-Friendly Questions
+- [x] Replace all 65 CLF-C02 questions with easier, foundational-level questions appropriate for the entry-level Cloud Practitioner certification (basic service identification, billing, cloud concepts, security fundamentals) — 73 questions in pool, 65 randomly selected per exam, ORDER BY RAND() added

@@ -102,10 +102,12 @@ export async function getQuestionsByCertification(certification: "SAA-C03" | "CL
   const db = await getDb();
   if (!db) return [];
   
+  const { sql: rawSql } = await import("drizzle-orm");
   const result = await db
     .select()
     .from(awsQuestions)
     .where(eq(awsQuestions.certification, certification))
+    .orderBy(rawSql`RAND()`)
     .limit(limit);
   
   return result.map(parseQuestionFields);
