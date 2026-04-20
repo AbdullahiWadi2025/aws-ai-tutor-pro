@@ -207,3 +207,7 @@
 
 ## Bug Fix: Logout Not Working
 - [x] Fix logout button doing nothing when clicked (was calling useMutation inside event handler — fixed to use logout() from useAuth directly)
+
+## Bug Fix: Exam & Practice Mode Issues
+- [x] Fix exam mode only showing 31 SAA-C03 and 28 CLF-C02 questions — seeded 34 more SAA-C03 (now 65) and 38 more CLF-C02 (now 64); fixed totalQuestions to reflect actual count
+- [x] Fix practice mode stuck on loading — added getPracticeQuestions tRPC procedure and rewrote PracticeMode.tsx to fetch questions from backend

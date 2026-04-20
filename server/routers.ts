@@ -54,7 +54,7 @@ export const appRouter = router({
           mode: input.mode,
         });
         
-        // Get 65 random questions for the exam
+        // Get all available questions (up to 65)
         const questions = await db.getQuestionsByCertification(input.certification, 65);
         
         // Extract session ID from result
@@ -68,9 +68,28 @@ export const appRouter = router({
             options: q.options,
             questionType: q.questionType,
           })),
-          totalQuestions: 65,
+          totalQuestions: questions.length,
           timeLimitMinutes: input.certification === "SAA-C03" ? 130 : 90,
         };
+      }),
+
+    getPracticeQuestions: protectedProcedure
+      .input(z.object({
+        certification: z.enum(["SAA-C03", "CLF-C02"]),
+      }))
+      .query(async ({ input }) => {
+        const questions = await db.getQuestionsByCertification(input.certification, 1000);
+        return questions.map(q => ({
+          id: q.id,
+          questionText: q.questionText,
+          options: q.options,
+          correctAnswers: Array.isArray(q.correctAnswers)
+            ? q.correctAnswers
+            : JSON.parse(q.correctAnswers as any),
+          explanation: q.explanation,
+          questionType: q.questionType as "single" | "multiple",
+          topic: q.topic,
+        }));
       }),
 
     submitAnswer: protectedProcedure
