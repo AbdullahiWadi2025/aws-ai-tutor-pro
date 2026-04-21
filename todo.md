@@ -265,3 +265,9 @@
 
 ## Bug Fix: Correct Answer Distribution (CLF-C02 and SAA-C03)
 - [x] Shuffle option order for all questions so correct answers are evenly distributed across A, B, C, and D — CLF-C02: {A:19, B:18, C:18, D:18}, SAA-C03: {A:17, B:16, C:16, D:16}
+
+## Bug Fix: Dashboard Welcome Message (User Feedback)
+- [x] Replace "you're doing well across all topics" with a motivational welcome message for new users who have no exam data yet; only show personalized performance feedback once they have completed at least one exam or practice session
+
+## Feature: Topic Practice Discoverability (User Feedback)
+- [x] Make topic-by-topic practice mode clearly visible and accessible from the dashboard and practice page — added topic selection step after cert selection with individual topic cards and "All Topics" option; summary screen shows "Drill this topic" buttons next to weak topics

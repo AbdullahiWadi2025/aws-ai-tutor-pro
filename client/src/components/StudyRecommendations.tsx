@@ -7,9 +7,10 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface StudyRecommendationsProps {
   certification: "SAA-C03" | "CLF-C02";
+  hasHistory?: boolean;
 }
 
-export function StudyRecommendations({ certification }: StudyRecommendationsProps) {
+export function StudyRecommendations({ certification, hasHistory = false }: StudyRecommendationsProps) {
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Get weak topics
@@ -43,17 +44,47 @@ export function StudyRecommendations({ certification }: StudyRecommendationsProp
   const recommendations = recommendationsQuery.data || [];
   const weakTopics = weakTopicsQuery.data || [];
 
-  if (weakTopics.length === 0) {
+  const hasRecommendations = recommendations.length > 0;
+
+  if (!hasHistory || (weakTopics.length === 0 && !hasRecommendations)) {
     return (
-      <Card className="border-green-200 bg-green-50">
+      <Card className="border-blue-200 bg-blue-50 dark:bg-blue-950/30 dark:border-blue-800">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-green-900">
+          <CardTitle className="flex items-center gap-2 text-blue-900 dark:text-blue-200">
+            <span className="text-2xl">🚀</span>
+            Ready to Start?
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-blue-800 dark:text-blue-300">
+            Complete your first practice session or exam to unlock personalized study recommendations and weak topic analysis.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+            <div className="rounded-lg bg-white dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 p-3">
+              <p className="text-sm font-semibold text-blue-900 dark:text-blue-200">💡 Tip #1</p>
+              <p className="text-xs text-blue-700 dark:text-blue-400 mt-1">Start with Practice Mode to get instant feedback on each question before taking a full exam.</p>
+            </div>
+            <div className="rounded-lg bg-white dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 p-3">
+              <p className="text-sm font-semibold text-blue-900 dark:text-blue-200">💡 Tip #2</p>
+              <p className="text-xs text-blue-700 dark:text-blue-400 mt-1">Use the AI Tutor to ask follow-up questions on any concept you find confusing.</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (weakTopics.length === 0 && hasRecommendations) {
+    return (
+      <Card className="border-green-200 bg-green-50 dark:bg-green-950/30 dark:border-green-800">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-green-900 dark:text-green-200">
             <span className="text-2xl">🎉</span>
             Great Performance!
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-green-800">
+          <p className="text-green-800 dark:text-green-300">
             You're doing well across all topics. Keep practicing to maintain your knowledge!
           </p>
         </CardContent>

@@ -237,7 +237,7 @@ export default function Dashboard() {
         {/* Gamification & Recommendations Section */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
           <div className="lg:col-span-2">
-            <StudyRecommendations certification="SAA-C03" />
+            <StudyRecommendations certification="SAA-C03" hasHistory={totalExams > 0} />
           </div>
           <div>
             <AchievementsCard />

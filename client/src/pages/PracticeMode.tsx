@@ -1,12 +1,33 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useLocation } from "wouter";
-import { ArrowLeft, CheckCircle, XCircle, BarChart2, Loader2 } from "lucide-react";
+import { ArrowLeft, CheckCircle, XCircle, BarChart2, Loader2, BookOpen } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { Streamdown } from "streamdown";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 
 const LETTERS = ["A", "B", "C", "D"];
+
+// Topics per certification
+const CERT_TOPICS: Record<string, string[]> = {
+  "CLF-C02": [
+    "Cloud Concepts",
+    "AWS Services",
+    "Security",
+    "Billing and Pricing",
+    "Shared Responsibility Model",
+  ],
+  "SAA-C03": [
+    "Compute",
+    "Storage",
+    "Networking",
+    "Databases",
+    "Security",
+    "Architecture",
+    "Cost Optimization",
+    "Monitoring",
+  ],
+};
 
 interface PracticeResult {
   questionId: number;
@@ -22,19 +43,40 @@ interface PracticeResult {
 export default function PracticeMode() {
   const [, navigate] = useLocation();
   const [selectedCert, setSelectedCert] = useState<"SAA-C03" | "CLF-C02" | null>(null);
+  const [selectedTopic, setSelectedTopic] = useState<string | null>(null); // null = all topics
+  const [topicChosen, setTopicChosen] = useState(false); // whether topic step was completed
   const [currentQuestionIdx, setCurrentQuestionIdx] = useState(0);
   const [selectedAnswers, setSelectedAnswers] = useState<string[]>([]); // option text
   const [showFeedback, setShowFeedback] = useState(false);
   const [results, setResults] = useState<PracticeResult[]>([]);
   const [showSummary, setShowSummary] = useState(false);
 
-  const { data: questions, isLoading, error } = trpc.exam.getPracticeQuestions.useQuery(
+  const { data: allQuestions, isLoading, error } = trpc.exam.getPracticeQuestions.useQuery(
     { certification: selectedCert! },
-    { enabled: !!selectedCert }
+    { enabled: !!selectedCert && topicChosen }
   );
+
+  // Filter by topic if one is selected
+  const questions = useMemo(() => {
+    if (!allQuestions) return undefined;
+    if (!selectedTopic) return allQuestions;
+    return allQuestions.filter(q => q.topic === selectedTopic);
+  }, [allQuestions, selectedTopic]);
 
   const handleSelectCert = (cert: "SAA-C03" | "CLF-C02") => {
     setSelectedCert(cert);
+    setSelectedTopic(null);
+    setTopicChosen(false);
+    setCurrentQuestionIdx(0);
+    setSelectedAnswers([]);
+    setShowFeedback(false);
+    setResults([]);
+    setShowSummary(false);
+  };
+
+  const handleSelectTopic = (topic: string | null) => {
+    setSelectedTopic(topic);
+    setTopicChosen(true);
     setCurrentQuestionIdx(0);
     setSelectedAnswers([]);
     setShowFeedback(false);
@@ -60,12 +102,10 @@ export default function PracticeMode() {
     if (!questions) return;
     const currentQuestion = questions[currentQuestionIdx];
 
-    // correctAnswers are letters like ["C"]; convert to option text for comparison
     const correctLetters: string[] = Array.isArray(currentQuestion.correctAnswers)
       ? currentQuestion.correctAnswers.map(String)
       : [];
 
-    // Convert selected option text to letters
     const userLetters = selectedAnswers.map(ans => {
       const idx = currentQuestion.options.findIndex(opt => opt === ans);
       return idx >= 0 ? LETTERS[idx] : ans;
@@ -114,19 +154,77 @@ export default function PracticeMode() {
           </Button>
           <h1 className="text-4xl font-bold text-slate-900 dark:text-white mb-4">Practice Mode</h1>
           <p className="text-slate-600 dark:text-slate-300 mb-8">
-            Practice at your own pace with immediate feedback and detailed explanations for every question.
+            Practice at your own pace with immediate feedback and detailed explanations for every question. Choose a certification to get started.
           </p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <Card className="p-8 hover:shadow-lg transition-shadow cursor-pointer" onClick={() => handleSelectCert("SAA-C03")}>
-              <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-4">AWS Solutions Architect Associate</h3>
-              <p className="text-slate-600 dark:text-slate-300 mb-6">Practice SAA-C03 exam questions at your own pace</p>
-              <Button className="w-full">Start SAA-C03 Practice</Button>
+              <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">AWS Solutions Architect Associate</h3>
+              <p className="text-xs font-medium text-blue-600 dark:text-blue-400 mb-3">SAA-C03</p>
+              <p className="text-slate-600 dark:text-slate-300 mb-6 text-sm">Practice all topics or drill a specific domain</p>
+              <Button className="w-full">Select SAA-C03</Button>
             </Card>
             <Card className="p-8 hover:shadow-lg transition-shadow cursor-pointer" onClick={() => handleSelectCert("CLF-C02")}>
-              <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-4">AWS Certified Cloud Practitioner</h3>
-              <p className="text-slate-600 dark:text-slate-300 mb-6">Practice CLF-C02 exam questions at your own pace</p>
-              <Button className="w-full">Start CLF-C02 Practice</Button>
+              <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">AWS Certified Cloud Practitioner</h3>
+              <p className="text-xs font-medium text-green-600 dark:text-green-400 mb-3">CLF-C02 · Beginner Friendly</p>
+              <p className="text-slate-600 dark:text-slate-300 mb-6 text-sm">Practice all topics or drill a specific domain</p>
+              <Button className="w-full">Select CLF-C02</Button>
             </Card>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Topic selection screen ─────────────────────────────────────────────────
+  if (selectedCert && !topicChosen) {
+    const topics = CERT_TOPICS[selectedCert] || [];
+    return (
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-900 p-4">
+        <div className="max-w-2xl mx-auto">
+          <Button variant="ghost" onClick={() => setSelectedCert(null)} className="mb-8">
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Change Certification
+          </Button>
+          <div className="mb-2">
+            <span className="text-xs font-semibold uppercase tracking-wide text-blue-500">{selectedCert}</span>
+          </div>
+          <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">Choose a Topic</h1>
+          <p className="text-slate-600 dark:text-slate-300 mb-8">
+            Practice a specific domain to target your weak areas, or practice all topics together.
+          </p>
+
+          {/* Practice all */}
+          <Card
+            className="p-5 mb-4 hover:shadow-lg transition-shadow cursor-pointer border-2 border-blue-200 dark:border-blue-700 bg-blue-50 dark:bg-blue-950/30"
+            onClick={() => handleSelectTopic(null)}
+          >
+            <div className="flex items-center gap-3">
+              <div className="bg-blue-100 dark:bg-blue-900 p-2 rounded-lg">
+                <BookOpen className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+              </div>
+              <div>
+                <p className="font-semibold text-slate-900 dark:text-white">All Topics</p>
+                <p className="text-sm text-slate-500 dark:text-slate-400">Practice questions from all domains in random order</p>
+              </div>
+              <Button size="sm" className="ml-auto">Start</Button>
+            </div>
+          </Card>
+
+          {/* Individual topics */}
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400 mb-3 mt-6">Or pick a specific topic</p>
+          <div className="grid grid-cols-1 gap-3">
+            {topics.map(topic => (
+              <Card
+                key={topic}
+                className="p-4 hover:shadow-md transition-shadow cursor-pointer hover:border-blue-300 dark:hover:border-blue-600"
+                onClick={() => handleSelectTopic(topic)}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="font-medium text-slate-900 dark:text-white">{topic}</span>
+                  <Button variant="outline" size="sm">Practice</Button>
+                </div>
+              </Card>
+            ))}
           </div>
         </div>
       </div>
@@ -145,15 +243,15 @@ export default function PracticeMode() {
     );
   }
 
-  // ── Error ──────────────────────────────────────────────────────────────────
+  // ── Error / no questions ───────────────────────────────────────────────────
   if (error || !questions || questions.length === 0) {
     return (
       <div className="min-h-screen bg-slate-50 dark:bg-slate-900 p-4">
         <div className="max-w-2xl mx-auto text-center py-20">
           <p className="text-red-500 text-lg mb-4">
-            {error ? "Failed to load questions. Please try again." : "No questions available for this certification yet."}
+            {error ? "Failed to load questions. Please try again." : `No questions available for ${selectedTopic || "this certification"} yet.`}
           </p>
-          <Button onClick={() => setSelectedCert(null)}>Go Back</Button>
+          <Button onClick={() => setTopicChosen(false)}>Go Back</Button>
         </div>
       </div>
     );
@@ -166,7 +264,6 @@ export default function PracticeMode() {
     const pct = total > 0 ? Math.round((correctCount / total) * 100) : 0;
     const passed = pct >= 70;
 
-    // Group wrong answers by topic
     const wrongByTopic: Record<string, number> = {};
     results.filter(r => !r.isCorrect).forEach(r => {
       wrongByTopic[r.topic] = (wrongByTopic[r.topic] || 0) + 1;
@@ -185,7 +282,9 @@ export default function PracticeMode() {
             <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">
               Practice Session Complete
             </h1>
-            <p className="text-slate-500 dark:text-slate-400">{selectedCert}</p>
+            <p className="text-slate-500 dark:text-slate-400">
+              {selectedCert}{selectedTopic ? ` · ${selectedTopic}` : " · All Topics"}
+            </p>
           </div>
 
           <div className="grid grid-cols-3 gap-4 mb-8">
@@ -213,7 +312,17 @@ export default function PracticeMode() {
                 {weakTopics.map(([topic, count]) => (
                   <div key={topic} className="flex justify-between items-center py-2 border-b border-slate-100 dark:border-slate-800 last:border-0">
                     <span className="text-slate-700 dark:text-slate-300">{topic}</span>
-                    <span className="text-sm font-medium text-red-500">{count} wrong</span>
+                    <div className="flex items-center gap-3">
+                      <span className="text-sm font-medium text-red-500">{count} wrong</span>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="text-xs"
+                        onClick={() => handleSelectTopic(topic)}
+                      >
+                        Drill this topic
+                      </Button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -221,7 +330,10 @@ export default function PracticeMode() {
           )}
 
           <div className="flex gap-4 justify-center">
-            <Button variant="outline" onClick={() => handleSelectCert(selectedCert)}>
+            <Button variant="outline" onClick={() => setTopicChosen(false)}>
+              Change Topic
+            </Button>
+            <Button variant="outline" onClick={() => handleSelectTopic(selectedTopic)}>
               Practice Again
             </Button>
             <Button onClick={() => navigate("/dashboard")}>
@@ -236,7 +348,6 @@ export default function PracticeMode() {
   // ── Question screen ────────────────────────────────────────────────────────
   const currentQuestion = questions[currentQuestionIdx];
 
-  // correctAnswers are letters like ["C"] — map to option text for display
   const correctLetters: string[] = Array.isArray(currentQuestion.correctAnswers)
     ? currentQuestion.correctAnswers.map(String)
     : [];
@@ -247,7 +358,6 @@ export default function PracticeMode() {
       : letter;
   });
 
-  // Determine if the current selection is correct (for feedback banner)
   const userLetters = selectedAnswers.map(ans => {
     const idx = currentQuestion.options.findIndex(opt => opt === ans);
     return idx >= 0 ? LETTERS[idx] : ans;
@@ -262,12 +372,12 @@ export default function PracticeMode() {
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900 p-4">
       <div className="max-w-4xl mx-auto">
         <div className="flex items-center justify-between mb-6">
-          <Button variant="ghost" onClick={() => setSelectedCert(null)}>
+          <Button variant="ghost" onClick={() => setTopicChosen(false)}>
             <ArrowLeft className="w-4 h-4 mr-2" />
-            Change Certification
+            Change Topic
           </Button>
           <span className="text-sm font-medium text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-3 py-1 rounded-full">
-            {selectedCert} — Question {currentQuestionIdx + 1} of {questions.length}
+            {selectedCert}{selectedTopic ? ` · ${selectedTopic}` : ""} — Q {currentQuestionIdx + 1} of {questions.length}
           </span>
         </div>
 
