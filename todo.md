@@ -274,3 +274,6 @@
 
 ## Feature: SAA-C03 Question Expansion
 - [x] Add questions for missing Compute topic and expand all SAA-C03 topics to at least 15 questions each — 90 new questions added, topics consolidated to 8 UI topics: Compute(24), Architecture(25), Databases(21), Networking(20), Security(20), Storage(16), Cost Optimization(16), Monitoring(13). Total: 155 SAA-C03 questions
+
+## Feature: CLF-C02 Question Expansion by Topic
+- [x] Expand all CLF-C02 topics to at least 15 questions each — 63 new questions added, all 5 topics now have 15+ questions: AWS Services(44), Cloud Concepts(28), Security(26), Billing and Pricing(23), Shared Responsibility Model(15). Total: 136 CLF-C02 questions
