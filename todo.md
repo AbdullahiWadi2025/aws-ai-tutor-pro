@@ -271,3 +271,6 @@
 
 ## Feature: Topic Practice Discoverability (User Feedback)
 - [x] Make topic-by-topic practice mode clearly visible and accessible from the dashboard and practice page — added topic selection step after cert selection with individual topic cards and "All Topics" option; summary screen shows "Drill this topic" buttons next to weak topics
+
+## Feature: SAA-C03 Question Expansion
+- [x] Add questions for missing Compute topic and expand all SAA-C03 topics to at least 15 questions each — 90 new questions added, topics consolidated to 8 UI topics: Compute(24), Architecture(25), Databases(21), Networking(20), Security(20), Storage(16), Cost Optimization(16), Monitoring(13). Total: 155 SAA-C03 questions
