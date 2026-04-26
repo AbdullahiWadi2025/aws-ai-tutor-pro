@@ -2911,7 +2911,7 @@ function LearnAITutor({ context, onClose }) {
             <div style={{ width:34, height:34, borderRadius:"50%", background:`${LT.indigo}20`, border:`1px solid ${LT.indigo}40`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:16 }}>🤖</div>
             <div>
               <div style={{ color:LT.text, fontFamily:FONT_LEARN, fontWeight:700, fontSize:13 }}>AI Tutor</div>
-              <div style={{ color:LT.muted, fontFamily:FONT_CODE, fontSize:9 }}>Powered by Claude</div>
+              <div style={{ color:LT.muted, fontFamily:FONT_CODE, fontSize:9 }}>AWS AI Tutor Pro</div>
             </div>
           </div>
           <button onClick={onClose} style={{ background:LT.dim, border:"none", color:LT.muted, borderRadius:"50%", width:28, height:28, cursor:"pointer", fontSize:14 }}>×</button>
@@ -3322,7 +3322,7 @@ export default function AwsGame() {
         {hubTab === "learn" && <LearnTab />}
 
         <div style={{ textAlign: "center", marginTop: 44, color: COLORS.muted, fontSize: 11, fontFamily: "monospace" }}>
-          Built on top of <span style={{ color: COLORS.accent }}>AWS AI Tutor Pro</span> · Powered by Claude AI
+          <span style={{ color: COLORS.accent }}>AWS AI Tutor Pro</span> · Your AWS Certification Study Partner
         </div>
       </div>
     </div>
