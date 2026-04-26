@@ -295,3 +295,6 @@
 - [x] Build Leaderboard UI — top 10 table with rank emoji, name, XP, lessons completed; current user highlighted in green
 - [x] Show leaderboard toggle button on the celebration/complete screen
 - [x] Submit score automatically when lesson is completed (useEffect on phase === "complete")
+
+## Bug Fix: setState During Render in Home.tsx
+- [x] Fix "Cannot update a component (Route) while rendering a different component (Home)" — moved navigate("/dashboard") into useEffect([isAuthenticated, user]) so it only fires after render, not during

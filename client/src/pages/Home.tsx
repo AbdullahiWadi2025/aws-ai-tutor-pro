@@ -2,14 +2,20 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { getLoginUrl } from "@/const";
 import { useLocation } from "wouter";
+import { useEffect } from "react";
 import { BookOpen, Brain, BarChart3, Zap } from "lucide-react";
 
 export default function Home() {
   const { user, isAuthenticated } = useAuth();
   const [, navigate] = useLocation();
 
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      navigate("/dashboard");
+    }
+  }, [isAuthenticated, user]);
+
   if (isAuthenticated && user) {
-    navigate("/dashboard");
     return null;
   }
 
