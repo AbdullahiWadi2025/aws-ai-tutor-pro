@@ -277,3 +277,14 @@
 
 ## Feature: CLF-C02 Question Expansion by Topic
 - [x] Expand all CLF-C02 topics to at least 15 questions each — 63 new questions added, all 5 topics now have 15+ questions: AWS Services(44), Cloud Concepts(28), Security(26), Billing and Pricing(23), Shared Responsibility Model(15). Total: 136 CLF-C02 questions
+
+## Feature: Duolingo-Style AWS Learning Game
+- [x] Add Nunito font via Google Fonts CDN in index.html
+- [x] Build AwsGame.tsx — full interactive game with hearts, XP, streak multiplier, progress bar
+- [x] Implement 3 question types: multiple choice (colored icons), true/false (large green/red buttons), matching pairs
+- [x] Build SVG owl mascot with bounce/shake animations and speech bubble hints
+- [x] Animated feedback bars (green correct, red wrong) with explanations
+- [x] Celebration screen with confetti and XP summary on lesson complete
+- [x] Game over screen with "Study first" (routes to AI Tutor) and "Retry" buttons
+- [x] Study cards for 3 most missed services (Auto Scaling, CloudFront, IAM) with analogies and exam keywords
+- [x] Add /game route in App.tsx and Learning Game card on Dashboard (4-column grid, orange owl card with New! badge)

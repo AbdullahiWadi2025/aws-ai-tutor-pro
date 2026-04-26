@@ -16,6 +16,7 @@ import AdminDashboard from "./pages/AdminDashboard";
 import Pricing from "./pages/Pricing";
 import SubscriptionManagement from "./pages/SubscriptionManagement";
 import BetaAdmin from "./pages/BetaAdmin";
+import AwsGame from "./pages/AwsGame";
 import { useAuth } from "./_core/hooks/useAuth";
 import { Loader2 } from "lucide-react";
 import { FeedbackWidget } from "./components/FeedbackWidget";
@@ -50,6 +51,7 @@ function Router() {
           <Route path="/subscription" component={SubscriptionManagement} />
           <Route path="/admin" component={AdminDashboard} />
           <Route path="/admin/beta" component={BetaAdmin} />
+          <Route path="/game" component={AwsGame} />
         </>
       )}
       <Route path="/404" component={NotFound} />

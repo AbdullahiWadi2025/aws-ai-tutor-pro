@@ -193,7 +193,7 @@ export default function Dashboard() {
         )}
 
         {/* Action Buttons */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <Card className="p-6 hover:shadow-lg transition-shadow cursor-pointer" onClick={() => navigate("/exam")}>
             <div className="flex items-center gap-4 mb-4">
               <div className="bg-blue-100 dark:bg-blue-900 p-3 rounded-lg">
@@ -231,6 +231,22 @@ export default function Dashboard() {
               Ask questions and get expert explanations
             </p>
             <Button className="w-full">Chat with AI</Button>
+          </Card>
+
+          <Card className="p-6 hover:shadow-lg transition-shadow cursor-pointer border-2 border-orange-200 dark:border-orange-800" onClick={() => navigate("/game")}>
+            <div className="flex items-center gap-4 mb-4">
+              <div className="bg-orange-100 dark:bg-orange-900 p-3 rounded-lg">
+                <span className="text-2xl">🦉</span>
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Learning Game</h3>
+                <span className="text-xs font-bold text-orange-500 uppercase tracking-wide">New!</span>
+              </div>
+            </div>
+            <p className="text-slate-600 dark:text-slate-300 mb-4 text-sm">
+              Duolingo-style AWS quiz with hearts, XP &amp; streaks
+            </p>
+            <Button className="w-full bg-orange-500 hover:bg-orange-600 text-white">Play Now 🎮</Button>
           </Card>
         </div>
 
