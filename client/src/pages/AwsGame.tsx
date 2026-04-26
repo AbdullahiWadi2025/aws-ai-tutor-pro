@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { trpc } from "@/lib/trpc";
 import { useLocation } from "wouter";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -251,8 +252,24 @@ export default function AwsGame() {
   const [matchComplete, setMatchComplete] = useState(false);
   const [shuffledDescriptions, setShuffledDescriptions] = useState<string[]>([]);
 
+  // tRPC hooks for leaderboard
+  const submitScore = trpc.game.submitScore.useMutation();
+  const { data: leaderboard, refetch: refetchLeaderboard } = trpc.game.getLeaderboard.useQuery(undefined, { enabled: phase === "complete" });
+  const [showLeaderboard, setShowLeaderboard] = useState(false);
+  const [scoreSubmitted, setScoreSubmitted] = useState(false);
+
   const question = QUESTIONS[currentQ];
   const progress = (currentQ / QUESTIONS.length) * 100;
+
+  // Auto-submit score when lesson completes
+  useEffect(() => {
+    if (phase === "complete" && !scoreSubmitted) {
+      setScoreSubmitted(true);
+      submitScore.mutate({ xpEarned: xp, streak, lessonsCompleted: 1 }, {
+        onSuccess: () => refetchLeaderboard(),
+      });
+    }
+  }, [phase]);
 
   // Shuffle matching descriptions on mount for each matching question
   useEffect(() => {
@@ -267,6 +284,8 @@ export default function AwsGame() {
       setMatchedPairs(new Set());
       setWrongMatch(null);
       setMatchComplete(false);
+    setScoreSubmitted(false);
+    setShowLeaderboard(false);
     }
   }, [currentQ]);
 
@@ -389,6 +408,8 @@ export default function AwsGame() {
     setMatchSelected(null);
     setMatchedPairs(new Set());
     setMatchComplete(false);
+    setScoreSubmitted(false);
+    setShowLeaderboard(false);
   };
 
   // ─── Render: Game Over ────────────────────────────────────────────────────
@@ -420,42 +441,94 @@ export default function AwsGame() {
 
   // ─── Render: Complete ─────────────────────────────────────────────────────
   if (phase === "complete") {
+    const rankEmojis = ["🥇", "🥈", "🥉", "4️⃣", "5️⃣", "6️⃣", "7️⃣", "8️⃣", "9️⃣", "🔟"];
     return (
       <div className="game-screen" style={{ fontFamily: "'Nunito', sans-serif" }}>
         <style>{gameStyles}</style>
         <Confetti />
-        <div className="game-card" style={{ textAlign: "center", padding: "2.5rem", position: "relative", zIndex: 10 }}>
-          <div style={{ fontSize: "4rem", marginBottom: "1rem" }}>🎉</div>
-          <h2 style={{ fontSize: "2rem", fontWeight: 900, color: "#58cc02", marginBottom: "0.5rem" }}>Lesson Complete!</h2>
-          <p style={{ color: "#6b7280", marginBottom: "1.5rem" }}>You finished the AWS Basics lesson!</p>
-          <OwlMascot state="correct" />
-          <div style={{ display: "flex", justifyContent: "center", gap: "2rem", margin: "1.5rem 0" }}>
-            <div style={{ textAlign: "center" }}>
-              <div style={{ fontSize: "2rem", fontWeight: 900, color: "#ff9900" }}>{xp}</div>
-              <div style={{ fontSize: "0.85rem", color: "#6b7280" }}>XP Earned</div>
+        <div style={{ maxWidth: "520px", margin: "0 auto", padding: "1.5rem" }}>
+          {/* Score card */}
+          <div className="game-card" style={{ textAlign: "center", padding: "2rem", position: "relative", zIndex: 10, marginBottom: "1rem" }}>
+            <div style={{ fontSize: "3.5rem", marginBottom: "0.5rem" }}>🎉</div>
+            <h2 style={{ fontSize: "1.8rem", fontWeight: 900, color: "#58cc02", marginBottom: "0.25rem" }}>Lesson Complete!</h2>
+            <p style={{ color: "#6b7280", marginBottom: "1rem", fontSize: "0.9rem" }}>You finished the AWS Basics lesson!</p>
+            <OwlMascot state="correct" />
+            <div style={{ display: "flex", justifyContent: "center", gap: "2rem", margin: "1rem 0" }}>
+              <div style={{ textAlign: "center" }}>
+                <div style={{ fontSize: "2rem", fontWeight: 900, color: "#ff9900" }}>{xp}</div>
+                <div style={{ fontSize: "0.8rem", color: "#6b7280" }}>XP Earned</div>
+              </div>
+              <div style={{ textAlign: "center" }}>
+                <div style={{ fontSize: "2rem", fontWeight: 900, color: "#1cb0f6" }}>{hearts}</div>
+                <div style={{ fontSize: "0.8rem", color: "#6b7280" }}>Hearts Left</div>
+              </div>
+              <div style={{ textAlign: "center" }}>
+                <div style={{ fontSize: "2rem", fontWeight: 900, color: "#a560f8" }}>{streak}</div>
+                <div style={{ fontSize: "0.8rem", color: "#6b7280" }}>Best Streak</div>
+              </div>
             </div>
-            <div style={{ textAlign: "center" }}>
-              <div style={{ fontSize: "2rem", fontWeight: 900, color: "#1cb0f6" }}>{hearts}</div>
-              <div style={{ fontSize: "0.85rem", color: "#6b7280" }}>Hearts Left</div>
-            </div>
-            <div style={{ textAlign: "center" }}>
-              <div style={{ fontSize: "2rem", fontWeight: 900, color: "#a560f8" }}>{streak}</div>
-              <div style={{ fontSize: "0.85rem", color: "#6b7280" }}>Best Streak</div>
-            </div>
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
-            {wrongServices.length > 0 && (
-              <button className="game-btn game-btn-primary" onClick={() => setPhase("study")}>
-                📚 Study weak spots
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
+              <button
+                className="game-btn"
+                style={{ background: "#1cb0f6", color: "white", border: "none", fontWeight: 800 }}
+                onClick={() => setShowLeaderboard(!showLeaderboard)}
+              >
+                🏆 {showLeaderboard ? "Hide Leaderboard" : "View Leaderboard"}
               </button>
-            )}
-            <button className="game-btn game-btn-secondary" onClick={resetGame}>
-              🔄 Play again
-            </button>
-            <button className="game-btn" style={{ background: "#232f3e", color: "white", border: "none" }} onClick={() => navigate("/practice")}>
-              📝 Try Practice Mode
-            </button>
+              {wrongServices.length > 0 && (
+                <button className="game-btn game-btn-primary" onClick={() => setPhase("study")}>
+                  📚 Study weak spots
+                </button>
+              )}
+              <button className="game-btn game-btn-secondary" onClick={resetGame}>
+                🔄 Play again
+              </button>
+              <button className="game-btn" style={{ background: "#232f3e", color: "white", border: "none" }} onClick={() => navigate("/practice")}>
+                📝 Try Practice Mode
+              </button>
+            </div>
           </div>
+
+          {/* Leaderboard panel */}
+          {showLeaderboard && (
+            <div className="game-card" style={{ padding: "1.5rem" }}>
+              <h3 style={{ fontWeight: 900, fontSize: "1.1rem", textAlign: "center", marginBottom: "1rem" }}>
+                🏆 Top 10 Leaderboard
+              </h3>
+              {!leaderboard ? (
+                <p style={{ textAlign: "center", color: "#6b7280", fontSize: "0.9rem" }}>Loading...</p>
+              ) : leaderboard.length === 0 ? (
+                <p style={{ textAlign: "center", color: "#6b7280", fontSize: "0.9rem" }}>No scores yet — you're the first!</p>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+                  {leaderboard.map((entry) => (
+                    <div
+                      key={entry.userId}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "0.75rem",
+                        padding: "0.6rem 0.75rem",
+                        borderRadius: "12px",
+                        background: entry.isCurrentUser ? "#58cc0215" : "#f9fafb",
+                        border: entry.isCurrentUser ? "2px solid #58cc02" : "2px solid transparent",
+                        fontWeight: entry.isCurrentUser ? 800 : 600,
+                      }}
+                    >
+                      <span style={{ fontSize: "1.2rem", minWidth: "2rem", textAlign: "center" }}>
+                        {rankEmojis[entry.rank - 1] ?? `#${entry.rank}`}
+                      </span>
+                      <span style={{ flex: 1, fontSize: "0.9rem", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {entry.name}{entry.isCurrentUser ? " (You)" : ""}
+                      </span>
+                      <span style={{ color: "#ff9900", fontWeight: 900, fontSize: "0.9rem" }}>⚡ {entry.totalXp} XP</span>
+                      <span style={{ color: "#6b7280", fontSize: "0.75rem" }}>{entry.lessonsCompleted} lessons</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
     );

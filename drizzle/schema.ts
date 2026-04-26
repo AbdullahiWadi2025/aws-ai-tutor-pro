@@ -267,3 +267,17 @@ export const userFeedback = mysqlTable("user_feedback", {
 
 export type UserFeedback = typeof userFeedback.$inferSelect;
 export type InsertUserFeedback = typeof userFeedback.$inferInsert;
+
+// Game Scores Table — tracks XP earned in the Duolingo-style AWS Learning Game
+export const gameScores = mysqlTable("game_scores", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("user_id").notNull().unique(), // one row per user, upserted on each lesson
+  totalXp: int("total_xp").default(0).notNull(),
+  lessonsCompleted: int("lessons_completed").default(0).notNull(),
+  bestStreak: int("best_streak").default(0).notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type GameScore = typeof gameScores.$inferSelect;
+export type InsertGameScore = typeof gameScores.$inferInsert;

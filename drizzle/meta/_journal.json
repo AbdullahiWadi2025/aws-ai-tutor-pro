@@ -43,6 +43,13 @@
       "when": 1776702352610,
       "tag": "0005_worthless_black_tom",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "5",
+      "when": 1777241663775,
+      "tag": "0006_new_electro",
+      "breakpoints": true
     }
   ]
 }

@@ -12,6 +12,7 @@ import { gamificationRouter } from "./gamification-router";
 import { requirePremiumAccess, canAccessFeature } from "./premium-access";
 import { checkAndUnlockAchievements } from "./badge-logic";
 import { betaRouter } from "./beta-router";
+import { gameRouter } from "./game-router";
 
 export const appRouter = router({
   system: systemRouter,
@@ -355,6 +356,7 @@ export const appRouter = router({
   // Gamification procedures
   gamification: gamificationRouter,
   beta: betaRouter,
+  game: gameRouter,
 });
 
 export type AppRouter = typeof appRouter;

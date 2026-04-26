@@ -288,3 +288,10 @@
 - [x] Game over screen with "Study first" (routes to AI Tutor) and "Retry" buttons
 - [x] Study cards for 3 most missed services (Auto Scaling, CloudFront, IAM) with analogies and exam keywords
 - [x] Add /game route in App.tsx and Learning Game card on Dashboard (4-column grid, orange owl card with New! badge)
+
+## Feature: Game Leaderboard
+- [x] Create game_scores table (userId, xp, lessonsCompleted, bestStreak, updatedAt)
+- [x] Add tRPC procedures: game.submitScore (upsert user XP) and game.getLeaderboard (top 10)
+- [x] Build Leaderboard UI — top 10 table with rank emoji, name, XP, lessons completed; current user highlighted in green
+- [x] Show leaderboard toggle button on the celebration/complete screen
+- [x] Submit score automatically when lesson is completed (useEffect on phase === "complete")
