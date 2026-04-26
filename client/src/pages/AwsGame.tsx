@@ -430,7 +430,7 @@ export default function AwsGame() {
             <button className="game-btn game-btn-secondary" onClick={resetGame}>
               🔄 Retry lesson
             </button>
-            <button className="game-btn game-btn-ghost" onClick={() => navigate("/tutor")}>
+            <button className="game-btn game-btn-ghost" onClick={() => navigate("/ai-tutor")}>
               🤖 Ask AI Tutor
             </button>
           </div>
