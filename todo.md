@@ -319,3 +319,15 @@
 - [x] Leaderboard integration (reuse existing game.submitScore / game.getLeaderboard)
 - [x] Fixed navigation bug (path-detail screen was blank)
 - [x] Fixed submitScore field name (bestStreak → streak)
+
+## Game Redesign: Original AWS Control-Room Aesthetic
+- [x] Replace AwsGame.tsx with completely new design: deep navy bg (#080d14), amber/orange glow accents, Space Mono + JetBrains Mono fonts (no Nunito/Duolingo feel)
+- [x] Add Match It mode: 31 progressive levels across Compute, Storage, Networking, Database, Security topics
+- [x] Add Architecture Builder mode: click-to-place services on real AWS architecture diagrams
+- [x] Add Escape Room mode: investigate clues then solve AWS incidents (not just timed MCQ)
+- [x] Add Troubleshoot mode: diagnose real AWS issues from symptoms and logs
+- [x] Add Scenario Quiz mode: real-world architecture scenario questions
+- [x] Add RPG Campaign mode: missions with XP rewards and badge unlocks
+- [x] Add Learn tab: structured curriculum with concept cards, quizzes, fill-in-the-blank per topic/unit
+- [x] Update Dashboard game card copy (remove "Duolingo-style" language)
+- [x] Add JetBrains Mono + Space Mono fonts to index.html

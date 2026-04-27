@@ -1,1008 +1,1337 @@
 // @ts-nocheck
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
 
-// ─── TYPES ────────────────────────────────────────────────────────────────────
-type QuestionType = "mcq" | "truefalse" | "fillin" | "match";
-interface Question {
-  id: string;
-  type: QuestionType;
-  text: string;
-  options?: string[];
-  correct: string | string[];
-  explanation: string;
-  pairs?: { left: string; right: string }[];
-}
-interface Lesson {
-  id: string;
-  title: string;
-  concept: { title: string; body: string; analogy: string; keywords: string[] };
-  questions: Question[];
-}
-interface Path {
-  id: string;
-  title: string;
-  icon: string;
-  color: string;
-  gradient: string;
-  lessons: Lesson[];
+// ─── DESIGN TOKENS ─────────────────────────────────────────────────────────────
+const C = {
+  bg:       "#080d14",
+  panel:    "#0d1520",
+  raised:   "#111c2a",
+  border:   "#1a2d45",
+  accent:   "#f59e0b",
+  accentDim:"#92400e",
+  green:    "#10b981",
+  red:      "#ef4444",
+  blue:     "#3b82f6",
+  purple:   "#8b5cf6",
+  indigo:   "#6366f1",
+  text:     "#e2e8f0",
+  muted:    "#64748b",
+  dim:      "#1a2d45",
+};
+const FONT_CODE  = "'Space Mono', 'JetBrains Mono', monospace";
+const FONT_BODY  = "'DM Sans', system-ui, sans-serif";
+
+// ─── SHARED PRIMITIVES ─────────────────────────────────────────────────────────
+function GlowText({ children, color = C.accent }) {
+  return <span style={{ color, textShadow: `0 0 18px ${color}70` }}>{children}</span>;
 }
 
-// ─── CONTENT ──────────────────────────────────────────────────────────────────
-const PATHS: Path[] = [
-  {
-    id: "cloud-basics",
-    title: "Cloud Basics",
-    icon: "☁️",
-    color: "#4FC3F7",
-    gradient: "from-sky-500 to-blue-600",
-    lessons: [
-      {
-        id: "cb-1",
-        title: "What is the Cloud?",
-        concept: {
-          title: "The Cloud is Just Someone Else's Computer",
-          body: "AWS (Amazon Web Services) is a platform that lets you rent computing resources — servers, storage, databases — over the internet instead of buying physical hardware. You pay only for what you use, like a utility bill.",
-          analogy: "Think of it like electricity: you don't build your own power plant — you just plug in and pay for what you use.",
-          keywords: ["On-demand", "Pay-as-you-go", "Scalability", "Global infrastructure"],
-        },
-        questions: [
-          { id: "cb1q1", type: "mcq", text: "What does 'pay-as-you-go' mean in AWS?", options: ["Pay a fixed monthly fee regardless of usage", "Pay only for the resources you actually consume", "Pay upfront for a full year of service", "Pay based on the number of users"], correct: "Pay only for the resources you actually consume", explanation: "AWS charges you only for what you use — no idle costs." },
-          { id: "cb1q2", type: "truefalse", text: "AWS requires you to purchase physical servers before using their services.", correct: "False", explanation: "AWS is entirely virtual — you never touch physical hardware." },
-          { id: "cb1q3", type: "fillin", text: "AWS allows you to ___ your resources up or down based on demand.", options: ["scale", "delete", "migrate", "encrypt"], correct: "scale", explanation: "Scalability is a core benefit — add or remove capacity as needed." },
-          { id: "cb1q4", type: "mcq", text: "Which of the following is a key benefit of cloud computing?", options: ["You must manage all hardware yourself", "Resources are only available in one location", "You can access resources from anywhere with internet", "Costs are always higher than on-premises"], correct: "You can access resources from anywhere with internet", explanation: "Cloud resources are globally accessible over the internet." },
-        ],
-      },
-      {
-        id: "cb-2",
-        title: "AWS Global Infrastructure",
-        concept: {
-          title: "Regions, Availability Zones & Edge Locations",
-          body: "AWS operates in Regions (geographic areas like us-east-1), each containing multiple Availability Zones (AZs) — isolated data centers. Edge Locations are smaller sites used by CloudFront to cache content closer to users.",
-          analogy: "A Region is a city. AZs are separate buildings in that city. Edge Locations are local post offices that deliver packages faster.",
-          keywords: ["Region", "Availability Zone", "Edge Location", "CloudFront"],
-        },
-        questions: [
-          { id: "cb2q1", type: "mcq", text: "What is an AWS Availability Zone?", options: ["A geographic area containing multiple data centers", "An isolated data center within a Region", "A content delivery network endpoint", "A billing category for AWS services"], correct: "An isolated data center within a Region", explanation: "AZs are isolated facilities within a Region, providing fault tolerance." },
-          { id: "cb2q2", type: "truefalse", text: "A single AWS Region contains only one Availability Zone.", correct: "False", explanation: "Each Region has at least 2-3 AZs for redundancy." },
-          { id: "cb2q3", type: "fillin", text: "AWS ___ Locations are used by CloudFront to cache content near users.", options: ["Edge", "Core", "Hub", "Relay"], correct: "Edge", explanation: "Edge Locations reduce latency by serving cached content from nearby points." },
-          { id: "cb2q4", type: "match", text: "Match each AWS infrastructure term to its definition.", pairs: [{ left: "Region", right: "Geographic area (e.g. us-east-1)" }, { left: "Availability Zone", right: "Isolated data center in a Region" }, { left: "Edge Location", right: "CloudFront cache site" }], correct: ["Region→Geographic area (e.g. us-east-1)", "Availability Zone→Isolated data center in a Region", "Edge Location→CloudFront cache site"], explanation: "These three layers form AWS's global infrastructure." },
-        ],
-      },
-      {
-        id: "cb-3",
-        title: "Cloud Service Models",
-        concept: {
-          title: "IaaS, PaaS, and SaaS",
-          body: "IaaS (Infrastructure as a Service) gives you raw compute/storage — you manage the OS and apps. PaaS (Platform as a Service) manages the runtime for you — you just deploy code. SaaS (Software as a Service) is a fully managed app you just use.",
-          analogy: "IaaS = renting a kitchen. PaaS = renting a restaurant with staff. SaaS = ordering takeout.",
-          keywords: ["IaaS", "PaaS", "SaaS", "Shared Responsibility"],
-        },
-        questions: [
-          { id: "cb3q1", type: "mcq", text: "Which service model gives you the most control over the underlying infrastructure?", options: ["SaaS", "PaaS", "IaaS", "FaaS"], correct: "IaaS", explanation: "IaaS provides raw infrastructure — you control the OS, runtime, and apps." },
-          { id: "cb3q2", type: "mcq", text: "AWS Elastic Beanstalk is an example of which service model?", options: ["IaaS", "PaaS", "SaaS", "DaaS"], correct: "PaaS", explanation: "Elastic Beanstalk manages the platform — you just upload your code." },
-          { id: "cb3q3", type: "truefalse", text: "With SaaS, the customer is responsible for managing the underlying servers.", correct: "False", explanation: "With SaaS, the provider manages everything — servers, OS, runtime, and app." },
-          { id: "cb3q4", type: "fillin", text: "In the ___ model, AWS manages everything and you simply use the application.", options: ["SaaS", "IaaS", "PaaS", "CaaS"], correct: "SaaS", explanation: "SaaS = fully managed software delivered over the internet." },
-        ],
-      },
-    ],
-  },
-  {
-    id: "compute",
-    title: "Compute",
-    icon: "⚡",
-    color: "#FF9800",
-    gradient: "from-orange-500 to-amber-600",
-    lessons: [
-      {
-        id: "comp-1",
-        title: "Amazon EC2",
-        concept: {
-          title: "Virtual Servers in the Cloud",
-          body: "Amazon EC2 (Elastic Compute Cloud) provides resizable virtual machines called instances. You choose the instance type (CPU/RAM), operating system, and storage. EC2 is the backbone of most AWS architectures.",
-          analogy: "EC2 is like renting a laptop in the cloud — you choose the specs, install what you need, and pay by the hour.",
-          keywords: ["Instance", "AMI", "Instance Type", "Security Group", "Key Pair"],
-        },
-        questions: [
-          { id: "c1q1", type: "mcq", text: "What does AMI stand for in EC2?", options: ["Amazon Machine Image", "Automated Management Interface", "Application Migration Index", "AWS Memory Instance"], correct: "Amazon Machine Image", explanation: "An AMI is a template containing the OS and software configuration for an EC2 instance." },
-          { id: "c1q2", type: "truefalse", text: "EC2 instances can only run Linux operating systems.", correct: "False", explanation: "EC2 supports Linux, Windows, and other operating systems." },
-          { id: "c1q3", type: "mcq", text: "Which EC2 pricing model offers the biggest discount for committing to 1-3 years?", options: ["On-Demand", "Spot Instances", "Reserved Instances", "Dedicated Hosts"], correct: "Reserved Instances", explanation: "Reserved Instances save up to 72% compared to On-Demand when you commit to 1 or 3 years." },
-          { id: "c1q4", type: "fillin", text: "EC2 ___ Instances use spare AWS capacity and can be interrupted, offering up to 90% discount.", options: ["Spot", "Reserved", "Dedicated", "Savings"], correct: "Spot", explanation: "Spot Instances are ideal for fault-tolerant workloads like batch processing." },
-        ],
-      },
-      {
-        id: "comp-2",
-        title: "AWS Lambda",
-        concept: {
-          title: "Run Code Without Servers",
-          body: "AWS Lambda is a serverless compute service. You upload your function code, define a trigger (API call, S3 event, schedule), and Lambda runs it automatically. You pay only for the milliseconds your code executes.",
-          analogy: "Lambda is like a vending machine — you press a button (trigger), it does the work, and you pay per use. No machine maintenance required.",
-          keywords: ["Serverless", "Function", "Trigger", "Event-driven", "Cold Start"],
-        },
-        questions: [
-          { id: "c2q1", type: "mcq", text: "What is the maximum execution timeout for an AWS Lambda function?", options: ["1 minute", "5 minutes", "15 minutes", "60 minutes"], correct: "15 minutes", explanation: "Lambda functions can run for a maximum of 15 minutes per invocation." },
-          { id: "c2q2", type: "truefalse", text: "With AWS Lambda, you are responsible for managing the underlying server infrastructure.", correct: "False", explanation: "Lambda is serverless — AWS manages all infrastructure. You only write code." },
-          { id: "c2q3", type: "mcq", text: "Which of the following can trigger an AWS Lambda function?", options: ["Only HTTP requests", "Only scheduled events", "S3 events, API Gateway, DynamoDB streams, and more", "Only manual invocations"], correct: "S3 events, API Gateway, DynamoDB streams, and more", explanation: "Lambda integrates with dozens of AWS services as event sources." },
-          { id: "c2q4", type: "fillin", text: "Lambda's ___ start refers to the delay when a function is invoked after being idle.", options: ["Cold", "Warm", "Hot", "Slow"], correct: "Cold", explanation: "Cold starts occur when Lambda initializes a new execution environment — typically adds 100ms-1s." },
-        ],
-      },
-      {
-        id: "comp-3",
-        title: "Auto Scaling & Load Balancing",
-        concept: {
-          title: "Handle Any Traffic Level Automatically",
-          body: "Auto Scaling automatically adjusts the number of EC2 instances based on demand. Elastic Load Balancing (ELB) distributes incoming traffic across multiple instances. Together, they ensure high availability and cost efficiency.",
-          analogy: "Auto Scaling is like a restaurant that opens more checkout lanes when it gets busy and closes them when it's quiet. ELB is the host who directs customers to open lanes.",
-          keywords: ["Auto Scaling Group", "ELB", "ALB", "NLB", "Target Group", "Health Check"],
-        },
-        questions: [
-          { id: "c3q1", type: "mcq", text: "What does an Auto Scaling Group do when CPU utilization exceeds a threshold?", options: ["Terminates all instances", "Launches additional EC2 instances", "Reduces instance size", "Migrates to Lambda"], correct: "Launches additional EC2 instances", explanation: "Auto Scaling adds capacity when demand increases and removes it when demand drops." },
-          { id: "c3q2", type: "mcq", text: "Which type of load balancer operates at Layer 7 (HTTP/HTTPS) and supports path-based routing?", options: ["Network Load Balancer", "Classic Load Balancer", "Application Load Balancer", "Gateway Load Balancer"], correct: "Application Load Balancer", explanation: "ALB operates at Layer 7 and supports host-based and path-based routing rules." },
-          { id: "c3q3", type: "truefalse", text: "Elastic Load Balancing can distribute traffic across instances in multiple Availability Zones.", correct: "True", explanation: "ELB is designed to span multiple AZs for high availability." },
-          { id: "c3q4", type: "fillin", text: "Auto Scaling uses ___ checks to determine if an instance is healthy and should receive traffic.", options: ["Health", "Status", "Ping", "Pulse"], correct: "Health", explanation: "Health checks ensure traffic is only sent to healthy, functioning instances." },
-        ],
-      },
-    ],
-  },
-  {
-    id: "storage",
-    title: "Storage",
-    icon: "🗄️",
-    color: "#66BB6A",
-    gradient: "from-green-500 to-emerald-600",
-    lessons: [
-      {
-        id: "stor-1",
-        title: "Amazon S3",
-        concept: {
-          title: "Unlimited Object Storage",
-          body: "Amazon S3 (Simple Storage Service) stores objects (files) in buckets. It's infinitely scalable, highly durable (99.999999999% — 11 nines), and accessible from anywhere. S3 is used for backups, static websites, data lakes, and more.",
-          analogy: "S3 is like Google Drive for your applications — unlimited space, organized in folders (buckets), accessible via URL.",
-          keywords: ["Bucket", "Object", "Key", "Versioning", "Storage Class", "Lifecycle Policy"],
-        },
-        questions: [
-          { id: "s1q1", type: "mcq", text: "What is the maximum size of a single object in Amazon S3?", options: ["5 GB", "50 GB", "5 TB", "Unlimited"], correct: "5 TB", explanation: "Individual S3 objects can be up to 5 TB. Use multipart upload for objects over 100 MB." },
-          { id: "s1q2", type: "truefalse", text: "Amazon S3 is a block storage service like a hard drive.", correct: "False", explanation: "S3 is object storage — it stores files as objects with metadata, not as blocks on a disk." },
-          { id: "s1q3", type: "mcq", text: "Which S3 storage class is most cost-effective for data accessed less than once a month?", options: ["S3 Standard", "S3 Intelligent-Tiering", "S3 Glacier", "S3 Standard-IA"], correct: "S3 Glacier", explanation: "S3 Glacier is designed for archival data with retrieval times of minutes to hours at very low cost." },
-          { id: "s1q4", type: "fillin", text: "S3 ___ automatically moves objects between storage classes based on access patterns.", options: ["Lifecycle", "Replication", "Transfer", "Migration"], correct: "Lifecycle", explanation: "Lifecycle policies automate transitions (e.g., move to Glacier after 90 days)." },
-        ],
-      },
-      {
-        id: "stor-2",
-        title: "EBS & EFS",
-        concept: {
-          title: "Block and File Storage for EC2",
-          body: "EBS (Elastic Block Store) is a persistent block storage volume attached to a single EC2 instance — like a hard drive. EFS (Elastic File System) is a managed NFS file system that can be mounted by multiple EC2 instances simultaneously.",
-          analogy: "EBS is like a USB drive plugged into one computer. EFS is like a shared network drive that multiple computers can access at the same time.",
-          keywords: ["EBS Volume", "Snapshot", "EFS Mount Target", "IOPS", "Throughput"],
-        },
-        questions: [
-          { id: "s2q1", type: "mcq", text: "How many EC2 instances can attach to a single EBS volume by default?", options: ["Unlimited", "Up to 16 (with Multi-Attach)", "Only 1", "Up to 5"], correct: "Only 1", explanation: "By default, an EBS volume attaches to one EC2 instance. Multi-Attach is a special feature for specific volume types." },
-          { id: "s2q2", type: "truefalse", text: "Amazon EFS can be mounted by multiple EC2 instances at the same time.", correct: "True", explanation: "EFS is a shared file system — multiple instances across multiple AZs can mount it simultaneously." },
-          { id: "s2q3", type: "mcq", text: "What is an EBS Snapshot?", options: ["A real-time backup of an EC2 instance", "A point-in-time backup of an EBS volume stored in S3", "A copy of an AMI", "A monitoring metric for disk I/O"], correct: "A point-in-time backup of an EBS volume stored in S3", explanation: "Snapshots are incremental backups stored in S3 that can restore volumes or create AMIs." },
-          { id: "s2q4", type: "fillin", text: "EBS ___ measures how many read/write operations per second a volume can handle.", options: ["IOPS", "Throughput", "Latency", "Bandwidth"], correct: "IOPS", explanation: "IOPS (Input/Output Operations Per Second) is the key performance metric for EBS volumes." },
-        ],
-      },
-      {
-        id: "stor-3",
-        title: "Storage Gateway & Snow Family",
-        concept: {
-          title: "Hybrid and Physical Data Transfer",
-          body: "Storage Gateway connects on-premises environments to AWS storage. The Snow Family (Snowball, Snowmobile) are physical devices for migrating large amounts of data to AWS when internet transfer would take too long.",
-          analogy: "Storage Gateway is a bridge between your office and AWS. Snowball is a rugged suitcase you fill with data and mail to Amazon.",
-          keywords: ["Storage Gateway", "Snowball", "Snowmobile", "DataSync", "Hybrid Cloud"],
-        },
-        questions: [
-          { id: "s3q1", type: "mcq", text: "A company needs to migrate 80 PB of data to AWS. Internet transfer would take years. What should they use?", options: ["AWS Direct Connect", "AWS DataSync", "AWS Snowmobile", "S3 Transfer Acceleration"], correct: "AWS Snowmobile", explanation: "Snowmobile is a 45-foot shipping container that can transfer up to 100 PB — ideal for massive migrations." },
-          { id: "s3q2", type: "truefalse", text: "AWS Snowball Edge can run EC2 instances and Lambda functions locally.", correct: "True", explanation: "Snowball Edge has compute capabilities for edge processing before data is shipped to AWS." },
-          { id: "s3q3", type: "mcq", text: "Which service provides a hybrid cloud storage gateway that caches frequently accessed data on-premises?", options: ["AWS DataSync", "AWS Storage Gateway", "AWS Transfer Family", "Amazon FSx"], correct: "AWS Storage Gateway", explanation: "Storage Gateway bridges on-premises storage with AWS, with local caching for low-latency access." },
-          { id: "s3q4", type: "fillin", text: "AWS ___ is used to automate data transfers between on-premises storage and AWS storage services.", options: ["DataSync", "Snowball", "Transfer", "Sync"], correct: "DataSync", explanation: "DataSync automates and accelerates online data transfers, handling scheduling and monitoring." },
-        ],
-      },
-    ],
-  },
-  {
-    id: "security",
-    title: "Security",
-    icon: "🔐",
-    color: "#AB47BC",
-    gradient: "from-purple-500 to-violet-600",
-    lessons: [
-      {
-        id: "sec-1",
-        title: "IAM — Identity & Access Management",
-        concept: {
-          title: "Who Can Do What in AWS",
-          body: "IAM controls who (users, groups, roles) can access which AWS resources and what actions they can perform. The principle of least privilege means granting only the minimum permissions needed.",
-          analogy: "IAM is like a keycard system in an office — different employees have access to different rooms based on their role.",
-          keywords: ["User", "Group", "Role", "Policy", "Least Privilege", "MFA"],
-        },
-        questions: [
-          { id: "sec1q1", type: "mcq", text: "What is the best practice for the AWS root account?", options: ["Use it for all daily tasks", "Share it with the team", "Enable MFA and avoid using it for daily tasks", "Delete it after creating an admin user"], correct: "Enable MFA and avoid using it for daily tasks", explanation: "The root account has unrestricted access — protect it with MFA and use IAM users for daily work." },
-          { id: "sec1q2", type: "truefalse", text: "An IAM Role can be assumed by an EC2 instance to access other AWS services.", correct: "True", explanation: "IAM Roles are the correct way to grant EC2 instances (and other services) access to AWS resources." },
-          { id: "sec1q3", type: "mcq", text: "Which IAM concept groups multiple permissions together into a reusable document?", options: ["Role", "Group", "Policy", "Permission Boundary"], correct: "Policy", explanation: "IAM Policies are JSON documents that define allowed/denied actions on specific resources." },
-          { id: "sec1q4", type: "fillin", text: "The principle of ___ privilege means granting only the minimum permissions required.", options: ["Least", "Most", "Zero", "Maximum"], correct: "Least", explanation: "Least privilege reduces the blast radius if credentials are compromised." },
-        ],
-      },
-      {
-        id: "sec-2",
-        title: "Encryption & Key Management",
-        concept: {
-          title: "Protecting Data at Rest and in Transit",
-          body: "AWS KMS (Key Management Service) creates and manages encryption keys. Data at rest (stored data) and data in transit (moving data) should both be encrypted. SSL/TLS encrypts data in transit; KMS encrypts data at rest.",
-          analogy: "Encryption is like a lockbox — KMS holds the keys, and only authorized parties can open it.",
-          keywords: ["KMS", "CMK", "Envelope Encryption", "SSL/TLS", "At Rest", "In Transit"],
-        },
-        questions: [
-          { id: "sec2q1", type: "mcq", text: "Which AWS service manages encryption keys for services like S3, EBS, and RDS?", options: ["AWS Secrets Manager", "AWS Certificate Manager", "AWS KMS", "AWS CloudHSM"], correct: "AWS KMS", explanation: "KMS is the central key management service integrated with most AWS storage and database services." },
-          { id: "sec2q2", type: "truefalse", text: "Data 'in transit' refers to data stored on an EBS volume.", correct: "False", explanation: "Data in transit is data moving over a network. Data at rest is stored data (EBS, S3, RDS, etc.)." },
-          { id: "sec2q3", type: "mcq", text: "Which service stores and rotates database passwords, API keys, and other secrets automatically?", options: ["AWS KMS", "AWS IAM", "AWS Secrets Manager", "AWS Parameter Store"], correct: "AWS Secrets Manager", explanation: "Secrets Manager stores secrets and can automatically rotate them on a schedule." },
-          { id: "sec2q4", type: "fillin", text: "AWS ___ Manager provisions and manages SSL/TLS certificates for use with AWS services.", options: ["Certificate", "Key", "Secret", "Token"], correct: "Certificate", explanation: "AWS Certificate Manager (ACM) provides free SSL/TLS certificates for use with CloudFront, ALB, and API Gateway." },
-        ],
-      },
-      {
-        id: "sec-3",
-        title: "Network Security",
-        concept: {
-          title: "Firewalls, DDoS Protection & Monitoring",
-          body: "Security Groups act as virtual firewalls for EC2 instances (stateful). NACLs (Network ACLs) control traffic at the subnet level (stateless). AWS Shield protects against DDoS attacks. AWS WAF filters malicious web traffic.",
-          analogy: "Security Groups are like a bouncer at the door of each instance. NACLs are like a checkpoint at the entrance to the neighborhood. Shield is like a riot shield against large-scale attacks.",
-          keywords: ["Security Group", "NACL", "WAF", "Shield", "GuardDuty", "Stateful vs Stateless"],
-        },
-        questions: [
-          { id: "sec3q1", type: "mcq", text: "What is the key difference between Security Groups and Network ACLs?", options: ["Security Groups are stateless; NACLs are stateful", "Security Groups are stateful; NACLs are stateless", "Security Groups apply to subnets; NACLs apply to instances", "They are identical in functionality"], correct: "Security Groups are stateful; NACLs are stateless", explanation: "Stateful (SG) means return traffic is automatically allowed. Stateless (NACL) means you must explicitly allow both directions." },
-          { id: "sec3q2", type: "truefalse", text: "AWS Shield Standard is automatically enabled for all AWS customers at no extra cost.", correct: "True", explanation: "Shield Standard provides basic DDoS protection for all AWS customers automatically." },
-          { id: "sec3q3", type: "mcq", text: "Which service uses machine learning to detect threats and suspicious activity in your AWS account?", options: ["AWS WAF", "AWS Inspector", "Amazon GuardDuty", "AWS Config"], correct: "Amazon GuardDuty", explanation: "GuardDuty analyzes CloudTrail, VPC Flow Logs, and DNS logs to detect threats using ML." },
-          { id: "sec3q4", type: "fillin", text: "AWS ___ filters malicious web requests like SQL injection and cross-site scripting.", options: ["WAF", "Shield", "Firewall", "Guard"], correct: "WAF", explanation: "WAF (Web Application Firewall) sits in front of your web apps and blocks common attack patterns." },
-        ],
-      },
-    ],
-  },
-  {
-    id: "networking",
-    title: "Networking",
-    icon: "🌐",
-    color: "#EF5350",
-    gradient: "from-red-500 to-rose-600",
-    lessons: [
-      {
-        id: "net-1",
-        title: "Amazon VPC",
-        concept: {
-          title: "Your Private Network in AWS",
-          body: "A VPC (Virtual Private Cloud) is an isolated network you define in AWS. Inside a VPC, you create subnets (public or private), route tables, and internet gateways. Public subnets can reach the internet; private subnets cannot (without NAT).",
-          analogy: "A VPC is like your company's private office building. Public subnets face the street (internet). Private subnets are internal rooms with no windows.",
-          keywords: ["VPC", "Subnet", "Route Table", "Internet Gateway", "NAT Gateway", "CIDR"],
-        },
-        questions: [
-          { id: "n1q1", type: "mcq", text: "What allows instances in a private subnet to initiate outbound internet connections without being directly reachable from the internet?", options: ["Internet Gateway", "VPC Peering", "NAT Gateway", "Direct Connect"], correct: "NAT Gateway", explanation: "NAT Gateway allows private subnet instances to reach the internet for updates/patches while blocking inbound connections." },
-          { id: "n1q2", type: "truefalse", text: "A public subnet in a VPC is directly connected to the internet by default.", correct: "False", explanation: "A subnet is public only when it has a route to an Internet Gateway in its route table." },
-          { id: "n1q3", type: "mcq", text: "Which component connects a VPC to the public internet?", options: ["NAT Gateway", "VPN Gateway", "Internet Gateway", "Transit Gateway"], correct: "Internet Gateway", explanation: "An Internet Gateway is the VPC component that enables communication between the VPC and the internet." },
-          { id: "n1q4", type: "fillin", text: "VPC ___ connects two VPCs privately without using the internet.", options: ["Peering", "Tunneling", "Linking", "Bridging"], correct: "Peering", explanation: "VPC Peering creates a private connection between two VPCs using AWS's internal network." },
-        ],
-      },
-      {
-        id: "net-2",
-        title: "Route 53 & CloudFront",
-        concept: {
-          title: "DNS and Content Delivery",
-          body: "Amazon Route 53 is a highly available DNS service that routes users to your application. Amazon CloudFront is a CDN (Content Delivery Network) that caches content at Edge Locations worldwide, reducing latency for global users.",
-          analogy: "Route 53 is like a phone book — it translates domain names to IP addresses. CloudFront is like having local warehouses worldwide so packages arrive faster.",
-          keywords: ["DNS", "Hosted Zone", "Record Set", "CDN", "Edge Location", "Origin", "Distribution"],
-        },
-        questions: [
-          { id: "n2q1", type: "mcq", text: "Which Route 53 routing policy sends traffic to the endpoint with the lowest latency for the user?", options: ["Simple routing", "Weighted routing", "Latency-based routing", "Geolocation routing"], correct: "Latency-based routing", explanation: "Latency-based routing measures actual network latency and routes to the fastest endpoint." },
-          { id: "n2q2", type: "truefalse", text: "Amazon CloudFront can only cache static content like images and videos.", correct: "False", explanation: "CloudFront can cache both static and dynamic content, and also supports Lambda@Edge for custom logic." },
-          { id: "n2q3", type: "mcq", text: "What is the 'origin' in a CloudFront distribution?", options: ["The Edge Location closest to the user", "The source server where CloudFront fetches content", "The DNS record for the domain", "The SSL certificate for the distribution"], correct: "The source server where CloudFront fetches content", explanation: "The origin is the backend — an S3 bucket, ALB, EC2 instance, or custom HTTP server." },
-          { id: "n2q4", type: "fillin", text: "Route 53 ___ routing sends a percentage of traffic to different endpoints for A/B testing.", options: ["Weighted", "Latency", "Failover", "Simple"], correct: "Weighted", explanation: "Weighted routing lets you split traffic (e.g., 90% to v1, 10% to v2) for gradual rollouts." },
-        ],
-      },
-      {
-        id: "net-3",
-        title: "Direct Connect & VPN",
-        concept: {
-          title: "Connecting Your Data Center to AWS",
-          body: "AWS Direct Connect provides a dedicated private network connection from your data center to AWS — bypassing the public internet for consistent performance. AWS Site-to-Site VPN creates an encrypted tunnel over the internet.",
-          analogy: "Direct Connect is a private highway between your office and AWS. VPN is a secure tunnel through the public highway system.",
-          keywords: ["Direct Connect", "Site-to-Site VPN", "Virtual Private Gateway", "BGP", "Bandwidth"],
-        },
-        questions: [
-          { id: "n3q1", type: "mcq", text: "A company needs a consistent, low-latency connection to AWS that doesn't use the public internet. What should they use?", options: ["AWS Site-to-Site VPN", "AWS Direct Connect", "AWS Transit Gateway", "VPC Peering"], correct: "AWS Direct Connect", explanation: "Direct Connect provides a dedicated physical connection with consistent performance and lower latency than VPN." },
-          { id: "n3q2", type: "truefalse", text: "AWS Site-to-Site VPN traffic travels over the public internet but is encrypted.", correct: "True", explanation: "VPN uses IPSec encryption over the public internet — it's secure but subject to internet variability." },
-          { id: "n3q3", type: "mcq", text: "Which service acts as a central hub to connect multiple VPCs and on-premises networks?", options: ["VPC Peering", "AWS Direct Connect", "AWS Transit Gateway", "Internet Gateway"], correct: "AWS Transit Gateway", explanation: "Transit Gateway simplifies network architecture by acting as a hub for VPC-to-VPC and VPC-to-on-premises connectivity." },
-          { id: "n3q4", type: "fillin", text: "Direct Connect provides a ___ connection, meaning it doesn't share bandwidth with other internet users.", options: ["Dedicated", "Shared", "Virtual", "Encrypted"], correct: "Dedicated", explanation: "Dedicated connections provide consistent bandwidth without the variability of shared internet." },
-        ],
-      },
-    ],
-  },
+function Chip({ children, color = C.accent }) {
+  return (
+    <span style={{
+      background: `${color}18`, border: `1px solid ${color}45`, color,
+      padding: "2px 9px", borderRadius: 4, fontSize: 10,
+      fontFamily: FONT_CODE, letterSpacing: 1,
+    }}>{children}</span>
+  );
+}
+
+function Btn({ children, onClick, color = C.accent, disabled = false, small = false, full = false }) {
+  return (
+    <button onClick={onClick} disabled={disabled} style={{
+      background: disabled ? C.dim : `linear-gradient(135deg,${color}22,${color}0d)`,
+      border: `1px solid ${disabled ? C.dim : color}`,
+      color: disabled ? C.muted : color,
+      padding: small ? "6px 14px" : "10px 22px",
+      borderRadius: 7, cursor: disabled ? "not-allowed" : "pointer",
+      fontFamily: FONT_CODE, fontSize: small ? 11 : 13, letterSpacing: 1,
+      transition: "all 0.18s",
+      boxShadow: disabled ? "none" : `0 0 12px ${color}28`,
+      width: full ? "100%" : "auto",
+    }}
+      onMouseEnter={e => { if (!disabled) (e.target as HTMLElement).style.boxShadow = `0 0 22px ${color}55`; }}
+      onMouseLeave={e => { if (!disabled) (e.target as HTMLElement).style.boxShadow = `0 0 12px ${color}28`; }}
+    >{children}</button>
+  );
+}
+
+function Panel({ children, style = {} }: any) {
+  return (
+    <div style={{ background: C.panel, border: `1px solid ${C.border}`, borderRadius: 12, padding: 20, ...style }}>
+      {children}
+    </div>
+  );
+}
+
+function XPBar({ xp, maxXp, color = C.accent }) {
+  const pct = Math.min(100, (xp / maxXp) * 100);
+  return (
+    <div style={{ background: C.dim, borderRadius: 99, height: 6, overflow: "hidden" }}>
+      <div style={{
+        width: `${pct}%`, height: "100%",
+        background: `linear-gradient(90deg,${color},${C.green})`,
+        borderRadius: 99, transition: "width 0.6s ease",
+        boxShadow: `0 0 8px ${color}70`,
+      }} />
+    </div>
+  );
+}
+
+// ─── MATCH IT DATA (31 levels) ─────────────────────────────────────────────────
+const MATCH_LEVELS = [
+  { level:1, title:"AWS Basics", badge:"☁️ Cloud Rookie", color:"#10b981",
+    pairs:[
+      {left:"Amazon S3",right:"Scalable object storage in the cloud"},
+      {left:"Amazon EC2",right:"Virtual servers you can rent on demand"},
+      {left:"Amazon RDS",right:"Managed relational database service"},
+      {left:"AWS Lambda",right:"Run code without managing servers"},
+      {left:"Amazon VPC",right:"Your own private network inside AWS"},
+      {left:"Amazon CloudFront",right:"Global CDN that caches content at edge"},
+    ]},
+  { level:2, title:"Compute — Services 101", badge:"💻 EC2 Starter", color:"#FF9900",
+    pairs:[
+      {left:"Amazon EC2",right:"Resizable virtual machines in the cloud"},
+      {left:"AWS Lambda",right:"Event-driven serverless compute"},
+      {left:"Amazon ECS",right:"Run Docker containers on AWS"},
+      {left:"AWS Elastic Beanstalk",right:"Deploy web apps without managing infra"},
+      {left:"Amazon Lightsail",right:"Simplified VPS for simple workloads"},
+      {left:"EC2 Auto Scaling",right:"Automatically adjust number of EC2 instances"},
+    ]},
+  { level:3, title:"Compute — Pricing", badge:"💡 Cost Aware", color:"#FF9900",
+    pairs:[
+      {left:"On-Demand Instances",right:"Pay per second, no commitment"},
+      {left:"Reserved Instances",right:"1 or 3 year commitment for big discount"},
+      {left:"Spot Instances",right:"Bid on unused capacity, up to 90% cheaper"},
+      {left:"Savings Plans",right:"Flexible discount for usage commitment"},
+      {left:"Dedicated Hosts",right:"Physical server fully dedicated to you"},
+      {left:"EC2 Hibernate",right:"Pause instance and resume from exact state"},
+    ]},
+  { level:4, title:"Compute — Containers", badge:"🐳 Container Pro", color:"#FF9900",
+    pairs:[
+      {left:"AWS Fargate",right:"Serverless compute engine for containers"},
+      {left:"Amazon EKS",right:"Managed Kubernetes control plane on AWS"},
+      {left:"Lambda Layers",right:"Share code and dependencies across functions"},
+      {left:"Amazon ECR",right:"Private Docker container image registry"},
+      {left:"AWS App Runner",right:"Deploy containerized web apps with one click"},
+      {left:"Provisioned Concurrency",right:"Keep functions warm to eliminate cold starts"},
+    ]},
+  { level:5, title:"Compute — Scaling & HA", badge:"📈 Scale Master", color:"#FF9900",
+    pairs:[
+      {left:"Launch Template",right:"EC2 configuration blueprint for Auto Scaling"},
+      {left:"Target Tracking Policy",right:"Auto Scaling that maintains a metric at a value"},
+      {left:"Step Scaling Policy",right:"Add/remove capacity in steps based on alarm"},
+      {left:"Warm Pool",right:"Pre-initialized EC2 instances ready to scale fast"},
+      {left:"Scheduled Scaling",right:"Scale capacity at a predictable time"},
+      {left:"Multi-AZ Deployment",right:"Run instances across availability zones for HA"},
+    ]},
+  { level:6, title:"Compute — Advanced", badge:"⚡ Serverless Guru", color:"#FF9900",
+    pairs:[
+      {left:"AWS Step Functions",right:"Orchestrate Lambda functions as a visual workflow"},
+      {left:"EventBridge",right:"Serverless event bus connecting AWS services"},
+      {left:"Lambda@Edge",right:"Run Lambda functions at CloudFront edge locations"},
+      {left:"AWS Batch",right:"Run large-scale batch computing jobs on managed infra"},
+      {left:"Graviton Instances",right:"ARM-based EC2 with better price-performance ratio"},
+      {left:"Spot Fleet",right:"Request multiple instance types to meet capacity target"},
+    ]},
+  { level:7, title:"Compute — Expert", badge:"🧠 Compute Expert", color:"#FF9900",
+    pairs:[
+      {left:"EC2 Placement Groups",right:"Control how instances are physically placed"},
+      {left:"Cluster Placement Group",right:"Low-latency packing of instances in one AZ"},
+      {left:"Spread Placement Group",right:"Instances on separate hardware to reduce failure blast"},
+      {left:"Nitro System",right:"AWS hardware and hypervisor behind modern EC2"},
+      {left:"AWS Outposts",right:"Run AWS infrastructure on-premises in your data center"},
+      {left:"ECS Task Definition",right:"Blueprint describing containers in a workload"},
+    ]},
+  { level:8, title:"Storage — Services 101", badge:"📦 Storage Starter", color:"#3b82f6",
+    pairs:[
+      {left:"Amazon S3",right:"Object storage for any type of file"},
+      {left:"Amazon EBS",right:"Block storage volumes attached to EC2"},
+      {left:"Amazon EFS",right:"Elastic file system shared across EC2 instances"},
+      {left:"AWS Glacier",right:"Low-cost long-term archival storage"},
+      {left:"AWS Storage Gateway",right:"Hybrid storage bridging on-premises to AWS"},
+      {left:"Amazon FSx",right:"Managed file systems (Windows, Lustre, NetApp)"},
+    ]},
+  { level:9, title:"Storage — S3 Tiers", badge:"🪣 S3 Specialist", color:"#3b82f6",
+    pairs:[
+      {left:"S3 Standard",right:"High durability, frequently accessed data"},
+      {left:"S3 Intelligent-Tiering",right:"Automatically moves data between access tiers"},
+      {left:"S3 Standard-IA",right:"Cheaper storage for infrequently accessed data"},
+      {left:"S3 One Zone-IA",right:"Single AZ infrequent access, lowest IA cost"},
+      {left:"S3 Glacier Instant",right:"Archive with millisecond retrieval"},
+      {left:"S3 Glacier Deep Archive",right:"Cheapest storage, hours retrieval time"},
+    ]},
+  { level:10, title:"Storage — S3 Features", badge:"🔧 S3 Power User", color:"#3b82f6",
+    pairs:[
+      {left:"S3 Versioning",right:"Keep multiple versions of every object"},
+      {left:"S3 Lifecycle Policy",right:"Auto-transition or expire objects over time"},
+      {left:"S3 Replication",right:"Copy objects to another bucket or region"},
+      {left:"S3 Transfer Acceleration",right:"Speed up uploads using CloudFront edge"},
+      {left:"S3 Multipart Upload",right:"Upload large objects in parallel parts"},
+      {left:"S3 Event Notification",right:"Trigger Lambda or SQS on bucket events"},
+    ]},
+  { level:11, title:"Storage — Block & File", badge:"💾 Block Expert", color:"#3b82f6",
+    pairs:[
+      {left:"EBS gp3",right:"General purpose SSD, baseline 3000 IOPS"},
+      {left:"EBS io2 Block Express",right:"Highest performance SSD for critical databases"},
+      {left:"EBS Snapshot",right:"Point-in-time backup of a volume stored in S3"},
+      {left:"EBS Multi-Attach",right:"Attach one io1/io2 volume to multiple EC2s"},
+      {left:"EFS Bursting Throughput",right:"EFS throughput scales with storage size"},
+      {left:"FSx for Lustre",right:"High-performance parallel file system for HPC/ML"},
+    ]},
+  { level:12, title:"Storage — Migration", badge:"🚚 Migration Pro", color:"#3b82f6",
+    pairs:[
+      {left:"AWS Snowball Edge",right:"Physical device for petabyte-scale data transfer"},
+      {left:"AWS Snowmobile",right:"Truck-sized container for exabyte migration"},
+      {left:"AWS DataSync",right:"Automated data transfer from on-premises to AWS"},
+      {left:"AWS Transfer Family",right:"SFTP/FTP/FTPS server backed by S3 or EFS"},
+      {left:"S3 Batch Operations",right:"Run operations on billions of S3 objects at once"},
+      {left:"AWS Backup",right:"Centralized backup across AWS services"},
+    ]},
+  { level:13, title:"Storage — Security", badge:"🛡️ Storage Guardian", color:"#3b82f6",
+    pairs:[
+      {left:"S3 Object Lock",right:"WORM storage — prevent deletion for set period"},
+      {left:"S3 Access Points",right:"Custom endpoints with unique access policies"},
+      {left:"S3 Requester Pays",right:"Data transfer cost charged to requester, not owner"},
+      {left:"S3 Presigned URL",right:"Temporary URL granting access to private object"},
+      {left:"S3 Select",right:"Query subset of data in CSV/JSON with SQL"},
+      {left:"Amazon Macie",right:"ML service that discovers sensitive data in S3"},
+    ]},
+  { level:14, title:"Networking — Services 101", badge:"🌐 Net Starter", color:"#8b5cf6",
+    pairs:[
+      {left:"Amazon VPC",right:"Private cloud network you define and control"},
+      {left:"Subnet",right:"Range of IP addresses within a VPC"},
+      {left:"Internet Gateway",right:"Allows public internet traffic into a VPC"},
+      {left:"Route Table",right:"Rules that determine where network traffic goes"},
+      {left:"Security Group",right:"Stateful firewall for EC2 instances"},
+      {left:"Network ACL",right:"Stateless firewall at the subnet level"},
+    ]},
+  { level:15, title:"Networking — Load Balancing", badge:"⚖️ Load Balancer Pro", color:"#8b5cf6",
+    pairs:[
+      {left:"Application Load Balancer",right:"Layer 7 balancer with path and host routing"},
+      {left:"Network Load Balancer",right:"Layer 4, ultra-low latency, static IP"},
+      {left:"Gateway Load Balancer",right:"Deploy and scale third-party network appliances"},
+      {left:"Target Group",right:"Group of resources that a load balancer routes to"},
+      {left:"ALB Listener Rule",right:"Route requests based on path, header, or host"},
+      {left:"Connection Draining",right:"Finish in-flight requests before deregistering"},
+    ]},
+  { level:16, title:"Networking — DNS & Edge", badge:"🧭 DNS Expert", color:"#8b5cf6",
+    pairs:[
+      {left:"Route 53 Simple",right:"Single resource, no health checks"},
+      {left:"Route 53 Weighted",right:"Split traffic by percentage across resources"},
+      {left:"Route 53 Latency",right:"Route to region with lowest latency for user"},
+      {left:"Route 53 Failover",right:"Active-passive failover with health checks"},
+      {left:"Route 53 Geolocation",right:"Route based on user's geographic location"},
+      {left:"CloudFront Origin Group",right:"Primary and fallback origin for HA delivery"},
+    ]},
+  { level:17, title:"Networking — VPC Advanced", badge:"🔗 VPC Architect", color:"#8b5cf6",
+    pairs:[
+      {left:"VPC Peering",right:"Private connection between two VPCs"},
+      {left:"AWS Transit Gateway",right:"Hub connecting thousands of VPCs and on-premises"},
+      {left:"VPC Endpoint (Gateway)",right:"Private S3/DynamoDB access without internet"},
+      {left:"VPC Endpoint (Interface)",right:"Private link to AWS services via ENI"},
+      {left:"NAT Gateway",right:"Allows private subnet to access internet outbound"},
+      {left:"Bastion Host",right:"Jump box for SSH access into private subnets"},
+    ]},
+  { level:18, title:"Networking — Hybrid & WAN", badge:"🌍 Hybrid Architect", color:"#8b5cf6",
+    pairs:[
+      {left:"AWS Direct Connect",right:"Dedicated private fiber link from data center to AWS"},
+      {left:"AWS Site-to-Site VPN",right:"Encrypted IPSec tunnel over public internet"},
+      {left:"AWS Client VPN",right:"Managed VPN for remote users to access VPC"},
+      {left:"Direct Connect Gateway",right:"Connect one Direct Connect to multiple VPCs"},
+      {left:"AWS Global Accelerator",right:"Route users to nearest AWS endpoint via Anycast"},
+      {left:"AWS PrivateLink",right:"Expose services privately across VPCs without peering"},
+    ]},
+  { level:19, title:"Networking — Expert", badge:"🧠 Net Expert", color:"#8b5cf6",
+    pairs:[
+      {left:"Egress-Only IGW",right:"IPv6 outbound traffic from private subnet"},
+      {left:"VPC Flow Logs",right:"Capture IP traffic metadata in VPC, subnet, or ENI"},
+      {left:"Reachability Analyzer",right:"Test network path between two AWS resources"},
+      {left:"AWS Network Firewall",right:"Managed stateful firewall for VPC perimeter"},
+      {left:"Traffic Mirroring",right:"Copy EC2 network traffic to monitoring appliance"},
+      {left:"ENI",right:"Virtual network card attached to EC2"},
+    ]},
+  { level:20, title:"Database — Services 101", badge:"🗄️ DB Starter", color:"#10b981",
+    pairs:[
+      {left:"Amazon RDS",right:"Managed relational database (MySQL, Postgres, etc.)"},
+      {left:"Amazon DynamoDB",right:"Serverless NoSQL key-value and document store"},
+      {left:"Amazon Aurora",right:"MySQL/Postgres compatible, 5x faster managed DB"},
+      {left:"Amazon Redshift",right:"Petabyte-scale columnar data warehouse"},
+      {left:"Amazon ElastiCache",right:"In-memory cache with Redis or Memcached"},
+      {left:"Amazon Neptune",right:"Managed graph database for connected data"},
+    ]},
+  { level:21, title:"Database — RDS Deep Dive", badge:"📋 RDS Specialist", color:"#10b981",
+    pairs:[
+      {left:"RDS Multi-AZ",right:"Synchronous standby replica for automatic failover"},
+      {left:"RDS Read Replica",right:"Async copy of DB for read-heavy workloads"},
+      {left:"RDS Proxy",right:"Connection pool between Lambda/apps and RDS"},
+      {left:"RDS Automated Backups",right:"Daily snapshot + transaction logs for PITR"},
+      {left:"RDS Parameter Group",right:"Configure DB engine settings like max connections"},
+      {left:"RDS Performance Insights",right:"Visualize DB load and identify slow queries"},
+    ]},
+  { level:22, title:"Database — DynamoDB", badge:"⚡ NoSQL Pro", color:"#10b981",
+    pairs:[
+      {left:"DynamoDB Partition Key",right:"Primary attribute that determines data placement"},
+      {left:"DynamoDB Sort Key",right:"Secondary attribute enabling range queries"},
+      {left:"DynamoDB GSI",right:"Global Secondary Index for alternate query patterns"},
+      {left:"DynamoDB LSI",right:"Local Secondary Index on same partition key"},
+      {left:"DynamoDB Streams",right:"Ordered log of item-level changes for 24 hours"},
+      {left:"DynamoDB DAX",right:"In-memory cache giving microsecond read latency"},
+    ]},
+  { level:23, title:"Database — Aurora & Caching", badge:"🚀 Aurora Expert", color:"#10b981",
+    pairs:[
+      {left:"Aurora Serverless v2",right:"Auto-scales DB capacity in fine-grained increments"},
+      {left:"Aurora Global Database",right:"Single DB spanning multiple regions, <1s replication"},
+      {left:"Aurora Parallel Query",right:"Pushes analytical queries to storage layer"},
+      {left:"ElastiCache Redis Cluster",right:"Sharded Redis for horizontal scaling"},
+      {left:"ElastiCache Memcached",right:"Simple multi-threaded caching, no persistence"},
+      {left:"Write-Through Cache",right:"Update cache and DB simultaneously on write"},
+    ]},
+  { level:24, title:"Database — Analytics", badge:"📊 Analytics DB Pro", color:"#10b981",
+    pairs:[
+      {left:"Redshift Spectrum",right:"Query S3 data directly from Redshift without loading"},
+      {left:"Redshift RA3 Nodes",right:"Separate compute and managed storage in Redshift"},
+      {left:"Amazon Timestream",right:"Serverless time-series database for IoT/metrics"},
+      {left:"Amazon QLDB",right:"Immutable cryptographically verifiable ledger DB"},
+      {left:"Amazon Keyspaces",right:"Managed Apache Cassandra-compatible service"},
+      {left:"AWS Glue",right:"Serverless ETL service to prepare data for analytics"},
+    ]},
+  { level:25, title:"Database — Expert Patterns", badge:"🧠 DB Architect", color:"#10b981",
+    pairs:[
+      {left:"CQRS Pattern",right:"Separate read and write models using different DBs"},
+      {left:"Event Sourcing",right:"Store state changes as events, not current state"},
+      {left:"Database Sharding",right:"Split data across multiple DB instances by key"},
+      {left:"Connection Pooling",right:"Reuse connections to avoid DB connection limits"},
+      {left:"Blue/Green Deployment",right:"Deploy new DB version alongside old for safe cutover"},
+      {left:"DynamoDB Conditional Writes",right:"Only write if a condition on existing item is true"},
+    ]},
+  { level:26, title:"Security — Services 101", badge:"🔐 Sec Starter", color:"#e11d48",
+    pairs:[
+      {left:"AWS IAM",right:"Control who can do what across all AWS services"},
+      {left:"AWS WAF",right:"Block malicious web traffic with rules"},
+      {left:"AWS Shield",right:"Protect against DDoS attacks automatically"},
+      {left:"Amazon GuardDuty",right:"Detect threats using ML and threat intelligence"},
+      {left:"AWS KMS",right:"Create and manage encryption keys"},
+      {left:"Amazon Cognito",right:"Add sign-up and sign-in to your apps"},
+    ]},
+  { level:27, title:"Security — IAM Deep Dive", badge:"🪪 IAM Expert", color:"#e11d48",
+    pairs:[
+      {left:"IAM Policy",right:"JSON document defining allowed or denied actions"},
+      {left:"IAM Role",right:"Identity with permissions assumed by services or users"},
+      {left:"Permission Boundary",right:"Max permissions a role or user can ever have"},
+      {left:"Service Control Policy",right:"Org-level policy limiting all accounts in an OU"},
+      {left:"Resource-Based Policy",right:"Policy attached to a resource like S3 or Lambda"},
+      {left:"IAM Access Analyzer",right:"Find resources shared with external principals"},
+    ]},
+  { level:28, title:"Security — Encryption", badge:"🔑 Crypto Pro", color:"#e11d48",
+    pairs:[
+      {left:"AWS KMS CMK",right:"Customer managed key in KMS for encryption"},
+      {left:"AWS KMS Data Key",right:"Symmetric key generated by KMS to encrypt data"},
+      {left:"Envelope Encryption",right:"Encrypt data key with master key for scale"},
+      {left:"AWS CloudHSM",right:"Dedicated hardware security module in the cloud"},
+      {left:"AWS Secrets Manager",right:"Store, rotate, and retrieve secrets automatically"},
+      {left:"AWS Parameter Store",right:"Lightweight config and secret storage in SSM"},
+    ]},
+  { level:29, title:"Security — Detection", badge:"🚨 Threat Hunter", color:"#e11d48",
+    pairs:[
+      {left:"Amazon GuardDuty",right:"Analyze VPC Flow Logs, DNS, CloudTrail for threats"},
+      {left:"AWS Security Hub",right:"Aggregate security findings across AWS services"},
+      {left:"Amazon Inspector",right:"Automated vulnerability scanning for EC2 and ECR"},
+      {left:"AWS CloudTrail",right:"Log every API call made in your AWS account"},
+      {left:"AWS Config",right:"Track configuration changes and compliance over time"},
+      {left:"Amazon Macie",right:"Discover and protect sensitive data in S3 with ML"},
+    ]},
+  { level:30, title:"Security — Network Defense", badge:"🛡️ Net Defender", color:"#e11d48",
+    pairs:[
+      {left:"WAF Managed Rules",right:"Pre-built rule groups for OWASP Top 10"},
+      {left:"AWS Shield Advanced",right:"24/7 DDoS response team + cost protection"},
+      {left:"AWS Firewall Manager",right:"Centrally manage WAF and Shield across accounts"},
+      {left:"AWS Network Firewall",right:"Stateful managed firewall inside your VPC"},
+      {left:"AWS Certificate Manager",right:"Free SSL/TLS certs for AWS services"},
+      {left:"VPC Security Group",right:"Stateful firewall — return traffic allowed automatically"},
+    ]},
+  { level:31, title:"Security — Expert & Compliance", badge:"🧠 Security Architect", color:"#e11d48",
+    pairs:[
+      {left:"AWS Organizations SCP",right:"Guardrails that restrict what accounts can do"},
+      {left:"AWS Control Tower",right:"Set up a secure multi-account environment fast"},
+      {left:"ABAC in IAM",right:"Use tags to control access instead of writing policies"},
+      {left:"Cross-Account Role",right:"Assume a role in another AWS account securely"},
+      {left:"AWS Audit Manager",right:"Continuously collect evidence for compliance audits"},
+      {left:"Amazon Detective",right:"Investigate security issues with graph-based analysis"},
+    ]},
 ];
 
-// ─── ESCAPE ROOM CHALLENGES ───────────────────────────────────────────────────
-const ESCAPE_CHALLENGES = [
-  {
-    id: "esc-1",
-    title: "The Overloaded Server",
-    scenario: "🚨 Your EC2 instance CPU is at 100% and users are getting timeouts. You have 60 seconds to fix it.",
-    options: ["Add more RAM to the existing instance", "Enable Auto Scaling with a target tracking policy", "Restart the EC2 instance", "Move the app to S3"],
-    correct: "Enable Auto Scaling with a target tracking policy",
-    explanation: "Auto Scaling automatically adds instances when CPU is high, distributing load without downtime.",
-  },
-  {
-    id: "esc-2",
-    title: "The Data Breach Alert",
-    scenario: "🔐 GuardDuty detected unusual API calls from an IAM user. The account may be compromised. Act fast!",
-    options: ["Delete the IAM user immediately", "Disable the IAM user's access keys and investigate CloudTrail logs", "Change the root password", "Enable S3 versioning"],
-    correct: "Disable the IAM user's access keys and investigate CloudTrail logs",
-    explanation: "Disabling keys stops the attack immediately. CloudTrail logs reveal what was accessed so you can assess damage.",
-  },
-  {
-    id: "esc-3",
-    title: "The Missing Backup",
-    scenario: "💾 Your RDS database crashed and you need to restore it. The last backup was 6 hours ago. What do you do?",
-    options: ["Restore from the automated backup snapshot", "Use Point-in-Time Recovery to restore to 5 minutes before the crash", "Create a new RDS instance from scratch", "Import data from S3"],
-    correct: "Use Point-in-Time Recovery to restore to 5 minutes before the crash",
-    explanation: "RDS Point-in-Time Recovery lets you restore to any second within your backup retention period — minimizing data loss.",
-  },
-  {
-    id: "esc-4",
-    title: "The DDoS Attack",
-    scenario: "⚠️ Your website is under a massive DDoS attack. Traffic has spiked 1000x. What's your first move?",
-    options: ["Shut down the website temporarily", "Enable AWS Shield Advanced and AWS WAF rules", "Increase EC2 instance size", "Move to a different region"],
-    correct: "Enable AWS Shield Advanced and AWS WAF rules",
-    explanation: "Shield Advanced provides DDoS protection with 24/7 support. WAF blocks malicious traffic patterns at the edge.",
-  },
-  {
-    id: "esc-5",
-    title: "The Runaway Bill",
-    scenario: "💸 Your AWS bill jumped from $200 to $5,000 this month. You need to find the cause immediately.",
-    options: ["Call AWS support and ask them to fix it", "Check AWS Cost Explorer and set up billing alerts", "Delete all resources and start over", "Switch to a different cloud provider"],
-    correct: "Check AWS Cost Explorer and set up billing alerts",
-    explanation: "Cost Explorer shows a breakdown by service and time. Billing alerts (via Budgets) prevent future surprises.",
-  },
-  {
-    id: "esc-6",
-    title: "The Slow Database",
-    scenario: "🐌 Your RDS MySQL database is responding slowly. Read queries are taking 10+ seconds. Fix it!",
-    options: ["Upgrade to a larger RDS instance", "Add an ElastiCache layer to cache frequent read queries", "Move the database to EC2", "Enable Multi-AZ"],
-    correct: "Add an ElastiCache layer to cache frequent read queries",
-    explanation: "ElastiCache (Redis/Memcached) caches frequent queries in memory, reducing database load and response times dramatically.",
-  },
+// ─── ESCAPE ROOM DATA ──────────────────────────────────────────────────────────
+const ESCAPE_ROOMS = [
+  { id:1, topic:"compute", title:"Users Can't Reach the Website",
+    story:"🔴 INCIDENT: HTTP 504 Gateway Timeout from ALB. EC2 instances show healthy in target group. Security group allows port 80 inbound from ALB.",
+    clues:[
+      {text:"ALB access log: 504 errors on all requests"},
+      {text:"EC2 syslog: 'Address already in use: 8080'"},
+      {text:"Netstat: port 8080 not listening on EC2"},
+    ],
+    choices:[
+      {text:"Terminate and replace all EC2 instances",correct:false,feedback:"Fresh instances run the same broken config — the app will crash again immediately."},
+      {text:"Delete and recreate the ALB",correct:false,feedback:"The ALB is working fine — the problem is the app process on EC2."},
+      {text:"Fix health check port to match app port and restart the app process",correct:true,feedback:"✅ The app process crashed and stopped listening on 8080. ALB health check used port 80 — masking the crash. Fix both."},
+      {text:"Add more EC2 instances to the target group",correct:false,feedback:"More broken instances won't fix the root cause — the app process is down on all of them."},
+    ]},
+  { id:2, topic:"compute", title:"Lambda SQS Deadlock",
+    story:"🔴 INCIDENT: 85,000 messages stuck in SQS queue. Lambda processor consuming 0 messages. Queue depth growing by 2,000/minute.",
+    clues:[
+      {text:"Lambda reserved concurrency: 5"},
+      {text:"SQS visibility timeout: 30 seconds"},
+      {text:"Lambda average execution time: 45 seconds"},
+    ],
+    choices:[
+      {text:"Delete and recreate the Lambda function",correct:false,feedback:"The code is fine. Configuration is the problem — recreating changes nothing."},
+      {text:"Switch from SQS to SNS",correct:false,feedback:"SNS is push-based — you'd lose 85k queued messages and the problem would remain."},
+      {text:"Raise concurrency limit + set visibility timeout > Lambda timeout",correct:true,feedback:"✅ Low concurrency throttled execution. Short visibility timeout caused a deadlock. Both must be fixed together."},
+      {text:"Add more RAM to Lambda",correct:false,feedback:"RAM affects speed, not concurrency or visibility timeouts. Deadlock persists."},
+    ]},
+  { id:3, topic:"compute", title:"The Frozen Container",
+    story:"🐳 ECS CRASH LOOP: Fargate tasks keep stopping every 3 minutes with exit code 137. Service stuck at 0 running tasks.",
+    clues:[
+      {text:"ECS stopped task reason: 'Essential container exited with code 137'"},
+      {text:"Container Insights: MemoryUtilization hits 100% then drops to 0 before each exit"},
+      {text:"Task definition memory limit: 512 MB — app recently updated with new ML model (800 MB)"},
+    ],
+    choices:[
+      {text:"Force a new deployment to restart the tasks",correct:false,feedback:"Fresh tasks run the same image with the same memory limit — they'll OOMKill again within minutes."},
+      {text:"Increase memory in the task definition and redeploy",correct:true,feedback:"✅ Exit code 137 = OOMKilled. The new ML model needs more RAM than the task limit allows. Raise the limit and redeploy."},
+      {text:"Switch from Fargate to EC2 launch type",correct:false,feedback:"Same container, same memory limit — the crash would move to EC2, not go away."},
+      {text:"Add an EFS volume to offload memory",correct:false,feedback:"EFS is file storage, not RAM. Memory pressure causes OOMKill — disk space doesn't help."},
+    ]},
+  { id:4, topic:"storage", title:"The Disappearing Files",
+    story:"🗑️ DATA LOSS: Users report files uploaded yesterday are gone. S3 bucket shows objects don't exist. No one admits to deleting anything.",
+    clues:[
+      {text:"S3 bucket has versioning DISABLED"},
+      {text:"CloudTrail: DeleteObject API calls at 2:13 AM from an automated deploy script"},
+      {text:"Deploy script uses 'aws s3 sync --delete' to sync build artifacts"},
+    ],
+    choices:[
+      {text:"Restore from the previous day's S3 backup",correct:false,feedback:"Backups help but don't fix the root cause — the deploy script will delete files again on the next deploy."},
+      {text:"Enable S3 Versioning + add MFA Delete + fix the deploy script sync path",correct:true,feedback:"✅ Versioning preserves deleted objects. MFA Delete prevents accidental bulk deletions. The sync path was too broad — it deleted user uploads, not just build artifacts."},
+      {text:"Make the S3 bucket public read-only",correct:false,feedback:"Read-only doesn't protect against deletion by the authenticated deploy role. IAM permissions are the real control."},
+      {text:"Move user uploads to the same prefix as build artifacts",correct:false,feedback:"That would make it worse — the sync --delete would also delete uploads even faster."},
+    ]},
+  { id:5, topic:"networking", title:"The $47,000 Bill",
+    story:"💸 COST EXPLOSION: AWS bill jumped from $3,200 to $47,000 this month. The spike is entirely in data transfer costs. No new features were deployed.",
+    clues:[
+      {text:"Cost Explorer: $43,800 in EC2 Data Transfer Out — cross-region"},
+      {text:"Architecture: App servers in us-east-1 query a read replica in eu-west-1 for every request"},
+      {text:"Read replica was added last month for 'disaster recovery' but is being used for live reads"},
+    ],
+    choices:[
+      {text:"Delete the eu-west-1 read replica immediately",correct:false,feedback:"Deleting the replica removes DR capability. The real fix is routing reads to the same-region replica."},
+      {text:"Move read traffic to a same-region read replica + use cross-region replica only for DR",correct:true,feedback:"✅ Cross-region data transfer is expensive. Reading from eu-west-1 for every us-east-1 request generated massive egress. Same-region reads are free within the same AZ."},
+      {text:"Enable S3 Transfer Acceleration",correct:false,feedback:"S3 Transfer Acceleration is for S3 uploads — it has nothing to do with RDS cross-region data transfer costs."},
+      {text:"Switch to DynamoDB Global Tables",correct:false,feedback:"Migrating databases is a months-long project. The immediate fix is routing reads to the correct region."},
+    ]},
+  { id:6, topic:"security", title:"The 3 AM Crypto Miner",
+    story:"🚨 SECURITY BREACH: AWS bill jumped $12,000 in 48 hours. EC2 CPU usage at 100% on instances you don't recognize. Your team didn't launch them.",
+    clues:[
+      {text:"GuardDuty finding: CryptoCurrency:EC2/BitcoinTool — 3 instances in us-west-2"},
+      {text:"CloudTrail: RunInstances API calls from IAM user 'deploy-bot' at 3:14 AM"},
+      {text:"deploy-bot access key was committed to a public GitHub repo 3 days ago"},
+    ],
+    choices:[
+      {text:"Terminate the rogue instances and ignore the root cause",correct:false,feedback:"The compromised key is still active — the attacker will spin up new instances within minutes."},
+      {text:"Rotate the deploy-bot access key",correct:false,feedback:"Rotation alone isn't enough — the old key must be deleted immediately, not just rotated."},
+      {text:"Immediately delete the compromised key + terminate rogue instances + audit all actions taken with the key + enable GuardDuty alerts",correct:true,feedback:"✅ Compromised credentials require immediate revocation (not rotation), full audit of what was done, and cleanup of all resources created. GuardDuty should have been enabled before this happened."},
+      {text:"Make the GitHub repo private",correct:false,feedback:"Making the repo private doesn't revoke the already-exposed key. The attacker already has it."},
+    ]},
 ];
 
-// ─── LEARNING CENTER CARDS ────────────────────────────────────────────────────
-const LEARN_CARDS = [
-  { service: "Amazon EC2", icon: "⚡", category: "Compute", tagline: "Virtual servers in the cloud", detail: "Resizable compute capacity. Choose instance type, OS, storage. Pay per hour or second." },
-  { service: "Amazon S3", icon: "🪣", category: "Storage", tagline: "Infinitely scalable object storage", detail: "Store any amount of data. 99.999999999% durability. Used for backups, static sites, data lakes." },
-  { service: "Amazon RDS", icon: "🗃️", category: "Database", tagline: "Managed relational databases", detail: "Supports MySQL, PostgreSQL, Oracle, SQL Server. Automated backups, Multi-AZ, read replicas." },
-  { service: "AWS Lambda", icon: "λ", category: "Compute", tagline: "Run code without servers", detail: "Event-driven. Pay per millisecond. 15-minute max timeout. Integrates with 200+ AWS services." },
-  { service: "Amazon VPC", icon: "🔒", category: "Networking", tagline: "Your private network in AWS", detail: "Isolated virtual network. Define subnets, route tables, security groups, NACLs." },
-  { service: "Amazon CloudFront", icon: "🌍", category: "Networking", tagline: "Global content delivery network", detail: "Caches content at 400+ Edge Locations. Reduces latency. Integrates with S3, ALB, custom origins." },
-  { service: "AWS IAM", icon: "🔑", category: "Security", tagline: "Identity and access management", detail: "Users, groups, roles, policies. Principle of least privilege. MFA support. Free service." },
-  { service: "Amazon DynamoDB", icon: "⚡🗃️", category: "Database", tagline: "Serverless NoSQL database", detail: "Single-digit millisecond performance. Scales to millions of requests/second. Key-value and document model." },
-  { service: "Amazon Route 53", icon: "📡", category: "Networking", tagline: "Scalable DNS and routing", detail: "Domain registration, DNS routing, health checks. Multiple routing policies (latency, weighted, geo)." },
-  { service: "AWS KMS", icon: "🔐", category: "Security", tagline: "Managed encryption key service", detail: "Create and control encryption keys. Integrates with S3, EBS, RDS, Lambda. FIPS 140-2 compliant." },
-  { service: "Amazon EKS", icon: "🐳", category: "Compute", tagline: "Managed Kubernetes service", detail: "Run containerized workloads. AWS manages the control plane. Integrates with IAM, VPC, ALB." },
-  { service: "AWS CloudFormation", icon: "📋", category: "Management", tagline: "Infrastructure as Code", detail: "Define AWS resources in JSON/YAML templates. Automate provisioning. Drift detection. Free service." },
-  { service: "Amazon SQS", icon: "📬", category: "Messaging", tagline: "Managed message queue", detail: "Decouple microservices. Standard (at-least-once) and FIFO (exactly-once) queues. Up to 14-day retention." },
-  { service: "Amazon SNS", icon: "📢", category: "Messaging", tagline: "Pub/sub notification service", detail: "Fan-out messages to SQS, Lambda, email, SMS, HTTP. Topics and subscriptions model." },
-  { service: "AWS Direct Connect", icon: "🔌", category: "Networking", tagline: "Dedicated network to AWS", detail: "Bypass the public internet. Consistent bandwidth and latency. 1 Gbps to 100 Gbps connections." },
+// ─── TROUBLESHOOT DATA ─────────────────────────────────────────────────────────
+const TROUBLESHOOT_CASES = [
+  { id:1, title:"Lambda Timing Out at Peak Traffic",
+    symptoms:["Lambda p50 duration: 200ms (normal)","Lambda p99 duration: 30,000ms (timeout)","Only happens during peak traffic hours"],
+    logs:["CloudWatch: 'Task timed out after 30.00 seconds'","X-Ray trace: 28s spent waiting on RDS connection","RDS CloudWatch: DatabaseConnections maxed at 100"],
+    rootCause:"Each Lambda invocation opens a new DB connection. Under high concurrency all 100 RDS connections are exhausted, causing new invocations to wait indefinitely for a slot.",
+    steps:[
+      {id:"a",text:"Increase Lambda timeout to 5 minutes",correct:false},
+      {id:"b",text:"Check RDS DatabaseConnections CloudWatch metric",correct:true},
+      {id:"c",text:"Add RDS Proxy between Lambda and RDS to pool connections",correct:true},
+      {id:"d",text:"Switch Lambda to DynamoDB",correct:false},
+      {id:"e",text:"Set Lambda reserved concurrency to prevent connection exhaustion until Proxy is live",correct:true},
+    ],
+    explanation:"Lambda + RDS connection exhaustion is a classic scaling trap. RDS Proxy pools and reuses connections across thousands of concurrent functions, eliminating the bottleneck."},
+  { id:2, title:"ECS Containers Keep Restarting",
+    symptoms:["ECS service tasks in RUNNING → STOPPED loop every 2 minutes","Desired count: 3, Running count oscillates 0–3","Happens even with zero incoming traffic"],
+    logs:["ECS task stopped reason: 'Essential container exited with code 137'","Container logs: 'Killed'","Container Insights: MemoryUtilization hits 100% before each exit"],
+    rootCause:"Exit code 137 = OOMKilled. The container's memory limit in the task definition is too low for the application's actual memory usage.",
+    steps:[
+      {id:"a",text:"Force a new deployment with force-new-deployment flag",correct:false},
+      {id:"b",text:"Check Container Insights for memory utilization trends",correct:true},
+      {id:"c",text:"Identify exit code 137 = OOMKilled in stopped task reason",correct:true},
+      {id:"d",text:"Switch to EC2 launch type",correct:false},
+      {id:"e",text:"Increase memory limit in ECS task definition and redeploy",correct:true},
+    ],
+    explanation:"OOMKill (exit code 137) is always a memory limit problem. Container Insights makes it obvious — memory hits 100% then the kernel kills the process. Fix: raise the task definition memory limit."},
+  { id:3, title:"S3 Static Site Returns 403",
+    symptoms:["S3 bucket hosts a static website","All URLs return 403 Forbidden","Worked fine yesterday — only change was enabling 'Block Public Access'"],
+    logs:["S3 access log: 403 AccessDenied on all GET requests","Bucket policy: allows s3:GetObject for Principal: *","Block Public Access settings: all four checkboxes now enabled"],
+    rootCause:"Block Public Access overrides bucket policies. Even with a bucket policy allowing public reads, enabling Block Public Access at the bucket or account level blocks all public access regardless.",
+    steps:[
+      {id:"a",text:"Delete and re-upload all S3 objects",correct:false},
+      {id:"b",text:"Identify that Block Public Access was recently enabled",correct:true},
+      {id:"c",text:"Disable 'Block public access to buckets and objects granted through new public bucket or access point policies'",correct:true},
+      {id:"d",text:"Add a CloudFront distribution",correct:false},
+      {id:"e",text:"Verify bucket policy still grants s3:GetObject to Principal: *",correct:true},
+    ],
+    explanation:"Block Public Access is a safety net that overrides bucket policies. For intentionally public static sites, the specific Block Public Access settings that block public bucket policies must be disabled."},
 ];
 
-// ─── COMPONENT ────────────────────────────────────────────────────────────────
-type Screen = "hub" | "path-detail" | "lesson-concept" | "lesson-question" | "lesson-complete" | "escape-room" | "escape-question" | "escape-complete" | "learn-center";
+// ─── SCENARIO QUIZ DATA ────────────────────────────────────────────────────────
+const SCENARIO_QUESTIONS = [
+  { q:"A startup needs to run a web app with unpredictable traffic — zero at night, spikes to 50k req/min during flash sales. Minimize cost and operational overhead. Which architecture?",
+    options:["EC2 Auto Scaling + RDS","Lambda + API Gateway + DynamoDB","ECS Fargate + Aurora","EC2 Reserved + ElastiCache"],
+    correct:1, explanation:"Lambda + API Gateway + DynamoDB scales to zero (no cost at night) and handles massive spikes without pre-provisioning. EC2-based solutions have minimum costs even at zero traffic."},
+  { q:"Your RDS MySQL database is getting 80% reads, 20% writes. Performance is degrading at peak. What is the most cost-effective fix?",
+    options:["Upgrade to a larger RDS instance class","Add RDS Read Replicas and route read traffic to them","Migrate to DynamoDB","Enable Multi-AZ deployment"],
+    correct:1, explanation:"Read Replicas offload read traffic from the primary instance. Multi-AZ is for HA/failover, not read scaling. Upgrading the instance is expensive and doesn't address the read/write split."},
+  { q:"A financial app must store transaction records that can never be modified or deleted, and must be cryptographically verifiable for audits. Which service?",
+    options:["Amazon S3 with Object Lock","Amazon RDS with automated backups","Amazon QLDB","DynamoDB with Streams"],
+    correct:2, explanation:"QLDB (Quantum Ledger Database) is an immutable, cryptographically verifiable ledger. S3 Object Lock prevents deletion but isn't a database. RDS and DynamoDB allow record modification."},
+  { q:"Your Lambda function processes S3 uploads. During a batch upload of 10,000 files, Lambda hits throttling errors. What is the root cause and fix?",
+    options:["Lambda timeout is too short — increase to 15 minutes","Lambda is hitting the account-level concurrency limit — request a limit increase and implement SQS as a buffer","S3 is rate-limiting the uploads — use multipart upload","Lambda memory is insufficient — increase to 10 GB"],
+    correct:1, explanation:"10,000 simultaneous S3 events trigger 10,000 concurrent Lambda invocations, hitting the account concurrency limit. SQS buffers the events and Lambda processes them at a controlled rate."},
+  { q:"An application in us-east-1 needs to serve users in Asia with <50ms latency. The app uses EC2 + RDS. What is the most effective solution?",
+    options:["Enable CloudFront for the entire application","Deploy EC2 + RDS in ap-southeast-1 with Route 53 latency routing","Use AWS Global Accelerator with the existing us-east-1 setup","Increase EC2 instance size for faster processing"],
+    correct:1, explanation:"Physical proximity is the only way to achieve <50ms latency for dynamic content. CloudFront caches static content but can't cache dynamic API responses. Global Accelerator improves routing but doesn't reduce the speed-of-light distance."},
+  { q:"You need to migrate 80 TB of on-premises data to S3. Your internet connection is 1 Gbps. Transfer time over internet would be ~8 days. What is the fastest approach?",
+    options:["Use S3 Transfer Acceleration","Use AWS DataSync over Direct Connect","Order an AWS Snowball Edge device","Use AWS Storage Gateway"],
+    correct:2, explanation:"Snowball Edge ships a physical device to your location. You copy data locally (much faster than internet), ship it back, and AWS loads it to S3. For 80 TB, this is typically 1-2 weeks total vs. 8+ days over even a 1 Gbps link with overhead."},
+];
 
-export default function AwsGame() {
-  const [, navigate] = useLocation();
-  const { user } = useAuth();
+// ─── RPG MISSIONS ──────────────────────────────────────────────────────────────
+const RPG_MISSIONS = [
+  { level:1, title:"The Startup Launch", badge:"🚀 Cloud Pioneer", xp:100,
+    description:"A startup needs a highly available web app. Deploy EC2 instances across multiple AZs behind a load balancer with auto scaling. The database must survive an AZ failure.",
+    services:["EC2","ALB","Auto Scaling","RDS Multi-AZ"],
+    quiz:{ q:"Which RDS feature automatically fails over to a standby in another AZ?", options:["Read Replica","Multi-AZ","Aurora Serverless","RDS Proxy"], correct:1 }},
+  { level:2, title:"The Serverless API", badge:"⚡ Lambda Legend", xp:150,
+    description:"Build an API that handles spiky traffic — 0 requests at night, 100k/min during flash sales. Zero server management. Pay only for actual usage.",
+    services:["Lambda","API Gateway","DynamoDB"],
+    quiz:{ q:"What triggers a Lambda function from an HTTP request?", options:["EC2","API Gateway","CloudWatch","S3 alone"], correct:1 }},
+  { level:3, title:"The Data Lake", badge:"🏊 Data Lake Architect", xp:200,
+    description:"A company needs to store petabytes of raw data, run SQL analytics, and visualize results. Data arrives from IoT devices, web apps, and databases.",
+    services:["S3","AWS Glue","Athena","QuickSight"],
+    quiz:{ q:"Which service lets you run SQL queries directly on S3 data without loading it into a database?", options:["Redshift","Athena","RDS","DynamoDB"], correct:1 }},
+  { level:4, title:"The Zero-Trust Network", badge:"🔐 Security Architect", xp:250,
+    description:"Redesign a legacy network where everything was in public subnets. Move workloads to private subnets. Allow only necessary outbound internet access. Block all direct SSH.",
+    services:["VPC","Private Subnets","NAT Gateway","Systems Manager"],
+    quiz:{ q:"How do you SSH into an EC2 instance in a private subnet without a bastion host?", options:["Direct SSH over internet","AWS Systems Manager Session Manager","VPN only","You can't"], correct:1 }},
+  { level:5, title:"The Global CDN", badge:"🌍 Edge Master", xp:300,
+    description:"A media company serves video content globally. Origin is S3 in us-east-1. Users in Asia report 8-second load times. Reduce to under 500ms worldwide.",
+    services:["CloudFront","S3","Route 53","ACM"],
+    quiz:{ q:"What CloudFront feature serves cached content from the nearest edge location to the user?", options:["Origin Shield","Edge Location Caching","Transfer Acceleration","Global Accelerator"], correct:1 }},
+];
 
-  // Navigation
-  const [screen, setScreen] = useState<Screen>("hub");
-  const [activeTab, setActiveTab] = useState<"learn" | "escape" | "reference">("learn");
-  const [selectedPath, setSelectedPath] = useState<Path | null>(null);
-  const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null);
-  const [lessonIndex, setLessonIndex] = useState(0);
-
-  // Game state
-  const [hearts, setHearts] = useState(3);
-  const [xp, setXp] = useState(0);
-  const [streak, setStreak] = useState(0);
-  const [currentQ, setCurrentQ] = useState(0);
-  const [selected, setSelected] = useState<string | null>(null);
-  const [matchLeft, setMatchLeft] = useState<string | null>(null);
-  const [matchedPairs, setMatchedPairs] = useState<string[]>([]);
-  const [showFeedback, setShowFeedback] = useState(false);
-  const [isCorrect, setIsCorrect] = useState(false);
-  const [lessonXp, setLessonXp] = useState(0);
-  const [completedLessons, setCompletedLessons] = useState<Set<string>>(new Set());
-
-  // Escape Room
-  const [escapeIndex, setEscapeIndex] = useState(0);
-  const [escapeTimer, setEscapeTimer] = useState(60);
-  const [escapeSelected, setEscapeSelected] = useState<string | null>(null);
-  const [escapeShowFeedback, setEscapeShowFeedback] = useState(false);
-  const [escapeCorrect, setEscapeCorrect] = useState(false);
-  const [escapeSolved, setEscapeSolved] = useState(0);
-  const [escapeTimerActive, setEscapeTimerActive] = useState(false);
-
-  // Leaderboard
-  const [showLeaderboard, setShowLeaderboard] = useState(false);
-  const [scoreSubmitted, setScoreSubmitted] = useState(false);
-  const submitScore = trpc.game?.submitScore?.useMutation?.();
-  const { data: leaderboard } = trpc.game?.getLeaderboard?.useQuery?.() ?? { data: null };
-
-  // Escape timer
-  useEffect(() => {
-    if (!escapeTimerActive) return;
-    if (escapeTimer <= 0) {
-      setEscapeTimerActive(false);
-      setEscapeShowFeedback(true);
-      setEscapeCorrect(false);
-      return;
+// ─── MATCH IT GAME ─────────────────────────────────────────────────────────────
+function MatchRound({ levelData, onLevelComplete }) {
+  const shuffledRight = useMemo(() => {
+    const arr = levelData.pairs.map((p, i) => ({ ...p, originalIdx: i }));
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
     }
-    const t = setTimeout(() => setEscapeTimer((p) => p - 1), 1000);
-    return () => clearTimeout(t);
-  }, [escapeTimer, escapeTimerActive]);
+    return arr;
+  }, [levelData.level]);
 
-  // Submit score on lesson complete
-  useEffect(() => {
-    if (screen === "lesson-complete" && !scoreSubmitted && user && submitScore) {
-      submitScore.mutate({ xpEarned: lessonXp, lessonsCompleted: 1, streak: streak });
-      setScoreSubmitted(true);
-    }
-  }, [screen]);
+  const [selLeft, setSelLeft] = useState(null);
+  const [selRight, setSelRight] = useState(null);
+  const [matched, setMatched] = useState(new Set());
+  const [wrongFlash, setWrongFlash] = useState(false);
+  const [score, setScore] = useState(0);
+  const [done, setDone] = useState(false);
 
-  const startLesson = (path: Path, idx: number) => {
-    const lesson = path.lessons[idx];
-    setSelectedPath(path);
-    setSelectedLesson(lesson);
-    setLessonIndex(idx);
-    setHearts(3);
-    setCurrentQ(0);
-    setLessonXp(0);
-    setStreak(0);
-    setSelected(null);
-    setMatchLeft(null);
-    setMatchedPairs([]);
-    setShowFeedback(false);
-    setScoreSubmitted(false);
-    setScreen("lesson-concept");
+  const handleLeft = (idx) => {
+    if (matched.has(idx) || done) return;
+    setSelLeft(idx); setWrongFlash(false); setSelRight(null);
   };
-
-  const handleAnswer = (answer: string) => {
-    if (showFeedback) return;
-    setSelected(answer);
-    const q = selectedLesson!.questions[currentQ];
-    const correct = Array.isArray(q.correct) ? q.correct.includes(answer) : q.correct === answer;
-    setIsCorrect(correct);
-    setShowFeedback(true);
-    if (correct) {
-      const gained = 10 + streak * 2;
-      setLessonXp((p) => p + gained);
-      setXp((p) => p + gained);
-      setStreak((p) => p + 1);
-    } else {
-      setHearts((p) => Math.max(0, p - 1));
-      setStreak(0);
-    }
-  };
-
-  const handleMatchSelect = (side: "left" | "right", value: string) => {
-    if (showFeedback) return;
-    const q = selectedLesson!.questions[currentQ];
-    if (side === "left") {
-      setMatchLeft(value);
-    } else if (matchLeft) {
-      const pair = `${matchLeft}→${value}`;
-      const correctPairs = q.correct as string[];
-      if (correctPairs.includes(pair)) {
-        const newMatched = [...matchedPairs, matchLeft, value];
-        setMatchedPairs(newMatched);
-        if (newMatched.length / 2 === q.pairs!.length) {
-          setIsCorrect(true);
-          setShowFeedback(true);
-          const gained = 15 + streak * 2;
-          setLessonXp((p) => p + gained);
-          setXp((p) => p + gained);
-          setStreak((p) => p + 1);
-        }
-      } else {
-        setHearts((p) => Math.max(0, p - 1));
-        setStreak(0);
+  const handleRight = (pos) => {
+    if (done) return;
+    const item = shuffledRight[pos];
+    if (matched.has(item.originalIdx)) return;
+    if (selLeft === null) { setSelRight(pos); return; }
+    if (selLeft === item.originalIdx) {
+      const nm = new Set([...matched, selLeft]);
+      const pts = score + 50;
+      setMatched(nm); setScore(pts); setSelLeft(null); setSelRight(null);
+      if (nm.size === levelData.pairs.length) {
+        setDone(true);
+        setTimeout(() => onLevelComplete(pts), 900);
       }
-      setMatchLeft(null);
-    }
-  };
-
-  const nextQuestion = () => {
-    if (!selectedLesson) return;
-    if (hearts === 0) {
-      setScreen("hub");
-      return;
-    }
-    if (currentQ + 1 >= selectedLesson.questions.length) {
-      setCompletedLessons((p) => new Set([...p, selectedLesson.id]));
-      setScreen("lesson-complete");
     } else {
-      setCurrentQ((p) => p + 1);
-      setSelected(null);
-      setMatchLeft(null);
-      setMatchedPairs([]);
-      setShowFeedback(false);
+      setWrongFlash(true); setSelRight(pos);
+      setTimeout(() => { setWrongFlash(false); setSelLeft(null); setSelRight(null); }, 700);
     }
   };
 
-  const startEscape = () => {
-    setEscapeIndex(0);
-    setEscapeSolved(0);
-    setEscapeTimer(60);
-    setEscapeSelected(null);
-    setEscapeShowFeedback(false);
-    setEscapeTimerActive(true);
-    setScreen("escape-question");
-  };
-
-  const handleEscapeAnswer = (answer: string) => {
-    if (escapeShowFeedback) return;
-    setEscapeTimerActive(false);
-    setEscapeSelected(answer);
-    const correct = answer === ESCAPE_CHALLENGES[escapeIndex].correct;
-    setEscapeCorrect(correct);
-    setEscapeShowFeedback(true);
-    if (correct) setEscapeSolved((p) => p + 1);
-  };
-
-  const nextEscape = () => {
-    if (escapeIndex + 1 >= ESCAPE_CHALLENGES.length) {
-      setScreen("escape-complete");
-    } else {
-      setEscapeIndex((p) => p + 1);
-      setEscapeTimer(60);
-      setEscapeSelected(null);
-      setEscapeShowFeedback(false);
-      setEscapeTimerActive(true);
-    }
-  };
-
-  // ── SCREENS ────────────────────────────────────────────────────────────────
-
-  // HUB
-  if (screen === "hub") {
-    return (
-      <div className="min-h-screen bg-background">
-        {/* Header */}
-        <div className="border-b border-border bg-card px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <button onClick={() => navigate("/dashboard")} className="text-muted-foreground hover:text-foreground transition-colors text-sm">← Back</button>
-            <span className="font-bold text-lg text-foreground">AWS Learning Game</span>
-          </div>
-          <div className="flex items-center gap-3">
-            <span className="text-sm font-semibold text-amber-500">⚡ {xp} XP</span>
-            <span className="text-sm font-semibold text-rose-500">{"❤️".repeat(hearts)}{"🖤".repeat(3 - hearts)}</span>
-          </div>
-        </div>
-
-        {/* Tabs */}
-        <div className="flex border-b border-border bg-card">
-          {(["learn", "escape", "reference"] as const).map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`flex-1 py-3 text-sm font-semibold capitalize transition-colors ${activeTab === tab ? "border-b-2 border-primary text-primary" : "text-muted-foreground hover:text-foreground"}`}
-            >
-              {tab === "learn" ? "📚 Learn" : tab === "escape" ? "🚨 Escape Room" : "📖 Reference"}
-            </button>
-          ))}
-        </div>
-
-        {/* Learn Tab */}
-        {activeTab === "learn" && (
-          <div className="p-4 max-w-2xl mx-auto">
-            <p className="text-muted-foreground text-sm mb-4">Complete lessons in order to unlock new topics. Each lesson teaches a concept then tests your knowledge.</p>
-            <div className="space-y-3">
-              {PATHS.map((path, pi) => {
-                const completedCount = path.lessons.filter((l) => completedLessons.has(l.id)).length;
-                const isUnlocked = pi === 0 || PATHS[pi - 1].lessons.every((l) => completedLessons.has(l.id));
-                return (
-                  <div
-                    key={path.id}
-                    onClick={() => { if (isUnlocked) { setSelectedPath(path); setScreen("path-detail"); } }}
-                    className={`rounded-xl border p-4 transition-all ${isUnlocked ? "border-border bg-card hover:border-primary cursor-pointer" : "border-border bg-muted opacity-50 cursor-not-allowed"}`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${path.gradient} flex items-center justify-center text-2xl shadow-sm`}>
-                        {path.icon}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="font-semibold text-foreground">{path.title}</span>
-                          {!isUnlocked && <span className="text-xs text-muted-foreground">🔒 Locked</span>}
-                          {completedCount === path.lessons.length && completedCount > 0 && <Badge className="text-xs bg-green-500 text-white">Complete ✓</Badge>}
-                        </div>
-                        <div className="text-xs text-muted-foreground mt-1">{path.lessons.length} lessons · {completedCount}/{path.lessons.length} done</div>
-                        <Progress value={(completedCount / path.lessons.length) * 100} className="h-1.5 mt-2" />
-                      </div>
-                      {isUnlocked && <span className="text-muted-foreground">›</span>}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* Escape Room Tab */}
-        {activeTab === "escape" && (
-          <div className="p-4 max-w-2xl mx-auto">
-            <div className="rounded-xl border border-border bg-card p-6 text-center mb-4">
-              <div className="text-5xl mb-3">🚨</div>
-              <h2 className="text-xl font-bold text-foreground mb-2">AWS Escape Room</h2>
-              <p className="text-muted-foreground text-sm mb-4">6 real AWS incidents. 60 seconds each. Can you solve them all before time runs out?</p>
-              <Button onClick={startEscape} className="bg-red-600 hover:bg-red-700 text-white px-8">Start Escape Room</Button>
-            </div>
-            <div className="space-y-2">
-              {ESCAPE_CHALLENGES.map((c, i) => (
-                <div key={c.id} className="rounded-lg border border-border bg-card p-3 flex items-center gap-3">
-                  <span className="text-2xl">{["🖥️", "🔐", "💾", "⚠️", "💸", "🐌"][i]}</span>
-                  <div>
-                    <div className="font-medium text-sm text-foreground">{c.title}</div>
-                    <div className="text-xs text-muted-foreground">60 second challenge</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Reference Tab */}
-        {activeTab === "reference" && (
-          <div className="p-4 max-w-2xl mx-auto">
-            <p className="text-muted-foreground text-sm mb-4">Quick reference cards for all major AWS services. Tap any card to see details.</p>
-            <div className="grid grid-cols-2 gap-3">
-              {LEARN_CARDS.map((card) => (
-                <div key={card.service} className="rounded-xl border border-border bg-card p-3 hover:border-primary transition-colors cursor-pointer">
-                  <div className="text-2xl mb-1">{card.icon}</div>
-                  <div className="font-semibold text-sm text-foreground">{card.service}</div>
-                  <Badge variant="outline" className="text-xs mt-1">{card.category}</Badge>
-                  <p className="text-xs text-muted-foreground mt-2">{card.tagline}</p>
-                  <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{card.detail}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-    );
-  }
-
-  // PATH DETAIL
-  if (screen === "path-detail" && selectedPath) {
-    return (
-      <div className="min-h-screen bg-background">
-        <div className="border-b border-border bg-card px-4 py-3 flex items-center gap-3">
-          <button onClick={() => setScreen("hub")} className="text-muted-foreground hover:text-foreground text-sm">← Back</button>
-          <span className="text-2xl">{selectedPath.icon}</span>
-          <span className="font-bold text-lg text-foreground">{selectedPath.title}</span>
-        </div>
-        <div className="p-4 max-w-2xl mx-auto space-y-3">
-          {selectedPath.lessons.map((lesson, idx) => {
-            const done = completedLessons.has(lesson.id);
-            const isUnlocked = idx === 0 || completedLessons.has(selectedPath.lessons[idx - 1].id);
+  return (
+    <div>
+      <p style={{ color: C.muted, fontSize: 11, fontFamily: FONT_CODE, margin: "0 0 14px" }}>
+        Click a service on the left → then its definition on the right
+      </p>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
+          {levelData.pairs.map((pair, origIdx) => {
+            const isM = matched.has(origIdx), isSel = selLeft === origIdx;
             return (
-              <div
-                key={lesson.id}
-                onClick={() => isUnlocked && startLesson(selectedPath, idx)}
-                className={`rounded-xl border p-4 flex items-center gap-4 transition-all ${isUnlocked ? "border-border bg-card hover:border-primary cursor-pointer" : "border-border bg-muted opacity-50 cursor-not-allowed"}`}
-              >
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center text-lg font-bold ${done ? "bg-green-500 text-white" : isUnlocked ? `bg-gradient-to-br ${selectedPath.gradient} text-white` : "bg-muted-foreground/20 text-muted-foreground"}`}>
-                  {done ? "✓" : isUnlocked ? idx + 1 : "🔒"}
-                </div>
-                <div className="flex-1">
-                  <div className="font-semibold text-foreground text-sm">{lesson.title}</div>
-                  <div className="text-xs text-muted-foreground">{lesson.questions.length} questions · {done ? "Completed" : isUnlocked ? "Ready" : "Locked"}</div>
-                </div>
-                {isUnlocked && !done && <span className="text-primary text-sm font-semibold">Start →</span>}
-                {done && <span className="text-green-500 text-sm">✓ Done</span>}
+              <div key={origIdx} onClick={() => handleLeft(origIdx)} style={{
+                padding: "10px 12px", borderRadius: 8,
+                border: `2px solid ${isM ? C.green : isSel ? levelData.color : C.border}`,
+                background: isM ? `${C.green}18` : isSel ? `${levelData.color}18` : C.bg,
+                color: isM ? C.green : isSel ? levelData.color : C.text,
+                cursor: isM ? "default" : "pointer",
+                fontFamily: FONT_CODE, fontSize: 11,
+                transition: "all 0.15s", userSelect: "none",
+                boxShadow: isSel ? `0 0 10px ${levelData.color}40` : "none",
+              }}>
+                {isM ? "✅ " : isSel ? "▶ " : ""}{pair.left}
+              </div>
+            );
+          })}
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
+          {shuffledRight.map((item, pos) => {
+            const isM = matched.has(item.originalIdx), isSel = selRight === pos, isWrong = wrongFlash && isSel;
+            return (
+              <div key={item.originalIdx} onClick={() => handleRight(pos)} style={{
+                padding: "10px 12px", borderRadius: 8,
+                border: `2px solid ${isM ? C.green : isWrong ? C.red : isSel ? C.purple : C.border}`,
+                background: isM ? `${C.green}18` : isWrong ? `${C.red}18` : isSel ? `${C.purple}18` : C.bg,
+                color: isM ? C.green : isWrong ? C.red : C.text,
+                cursor: isM ? "default" : "pointer",
+                fontFamily: "monospace", fontSize: 10, lineHeight: 1.4,
+                transition: "all 0.15s", userSelect: "none",
+              }}>
+                {isM ? "✅ " : ""}{item.right}
               </div>
             );
           })}
         </div>
       </div>
-    );
-  }
-
-  // LESSON CONCEPT
-  if (screen === "lesson-concept" && selectedLesson) {
-    const c = selectedLesson.concept;
-    return (
-      <div className="min-h-screen bg-background flex flex-col">
-        <div className="border-b border-border bg-card px-4 py-3 flex items-center gap-3">
-          <button onClick={() => setScreen("path-detail")} className="text-muted-foreground hover:text-foreground text-sm">✕</button>
-          <span className="font-semibold text-foreground flex-1">{selectedLesson.title}</span>
-          <span className="text-amber-500 text-sm font-semibold">⚡ {xp} XP</span>
-        </div>
-        <div className="flex-1 p-4 max-w-2xl mx-auto w-full">
-          <div className="rounded-2xl border border-border bg-card p-6 mb-4">
-            <div className="text-xs font-semibold text-primary uppercase tracking-wide mb-2">Concept</div>
-            <h2 className="text-xl font-bold text-foreground mb-3">{c.title}</h2>
-            <p className="text-foreground/80 leading-relaxed mb-4">{c.body}</p>
-            <div className="rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 p-4 mb-4">
-              <div className="text-xs font-semibold text-amber-600 dark:text-amber-400 mb-1">💡 Analogy</div>
-              <p className="text-sm text-amber-800 dark:text-amber-300">{c.analogy}</p>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {c.keywords.map((kw) => (
-                <span key={kw} className="px-2 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium">{kw}</span>
-              ))}
-            </div>
-          </div>
-          <Button onClick={() => setScreen("lesson-question")} className="w-full h-12 text-base font-semibold">
-            Start Questions →
-          </Button>
-        </div>
+      {wrongFlash && <div style={{ textAlign: "center", color: C.red, marginTop: 10, fontFamily: FONT_CODE, fontSize: 11 }}>❌ Not a match — try again!</div>}
+      {done && <div style={{ textAlign: "center", color: C.green, marginTop: 10, fontFamily: FONT_CODE, fontSize: 12 }}>🎉 Level complete! +{score} pts</div>}
+      <div style={{ marginTop: 10, display: "flex", justifyContent: "space-between" }}>
+        <Chip color={levelData.color}>{matched.size}/{levelData.pairs.length} matched</Chip>
+        <Chip color={C.green}>Score: {score}</Chip>
       </div>
-    );
-  }
+    </div>
+  );
+}
 
-  // LESSON QUESTION
-  if (screen === "lesson-question" && selectedLesson) {
-    const q = selectedLesson.questions[currentQ];
-    const progress = ((currentQ) / selectedLesson.questions.length) * 100;
+function MatchingGame({ onComplete }) {
+  const [levelIdx, setLevelIdx] = useState(0);
+  const [totalScore, setTotalScore] = useState(0);
+  const [phase, setPhase] = useState("play");
+  const level = MATCH_LEVELS[levelIdx];
 
-    return (
-      <div className="min-h-screen bg-background flex flex-col">
-        {/* Header */}
-        <div className="border-b border-border bg-card px-4 py-3">
-          <div className="flex items-center gap-3 mb-2">
-            <button onClick={() => setScreen("hub")} className="text-muted-foreground hover:text-foreground text-sm">✕</button>
-            <Progress value={progress} className="flex-1 h-2" />
-            <span className="text-rose-500 text-sm font-semibold">{"❤️".repeat(hearts)}{"🖤".repeat(3 - hearts)}</span>
-          </div>
-          <div className="flex items-center justify-between text-xs text-muted-foreground">
-            <span>{currentQ + 1} / {selectedLesson.questions.length}</span>
-            <span className="text-amber-500 font-semibold">⚡ +{10 + streak * 2} XP {streak >= 2 ? `🔥×${streak}` : ""}</span>
-          </div>
-        </div>
+  const handleLevelComplete = (pts) => {
+    const newTotal = totalScore + pts;
+    setTotalScore(newTotal);
+    if (levelIdx + 1 >= MATCH_LEVELS.length) { setPhase("done"); setTimeout(() => onComplete(newTotal), 400); }
+    else setPhase("levelup");
+  };
+  const nextLevel = () => { setLevelIdx(i => i + 1); setPhase("play"); };
 
-        {/* Question */}
-        <div className="flex-1 p-4 max-w-2xl mx-auto w-full flex flex-col">
-          <div className="mb-6">
-            <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
-              {q.type === "mcq" ? "Multiple Choice" : q.type === "truefalse" ? "True or False" : q.type === "fillin" ? "Fill in the Blank" : "Match the Pairs"}
-            </div>
-            <p className="text-lg font-semibold text-foreground leading-snug">{q.text}</p>
-          </div>
-
-          {/* MCQ */}
-          {(q.type === "mcq" || q.type === "fillin") && (
-            <div className="space-y-3 flex-1">
-              {q.options!.map((opt) => {
-                let cls = "w-full text-left rounded-xl border p-4 text-sm font-medium transition-all ";
-                if (!showFeedback) {
-                  cls += selected === opt ? "border-primary bg-primary/10 text-primary" : "border-border bg-card text-foreground hover:border-primary hover:bg-primary/5";
-                } else {
-                  if (opt === q.correct) cls += "border-green-500 bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-300";
-                  else if (opt === selected && opt !== q.correct) cls += "border-red-500 bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-300";
-                  else cls += "border-border bg-card text-muted-foreground opacity-60";
-                }
-                return (
-                  <button key={opt} onClick={() => handleAnswer(opt)} className={cls}>
-                    {opt}
-                  </button>
-                );
-              })}
-            </div>
-          )}
-
-          {/* True/False */}
-          {q.type === "truefalse" && (
-            <div className="flex gap-4 flex-1">
-              {["True", "False"].map((opt) => {
-                let cls = "flex-1 h-24 rounded-2xl border-2 text-xl font-bold transition-all ";
-                if (!showFeedback) {
-                  cls += selected === opt ? "border-primary bg-primary/10 text-primary" : "border-border bg-card text-foreground hover:border-primary";
-                } else {
-                  if (opt === q.correct) cls += "border-green-500 bg-green-100 dark:bg-green-950/30 text-green-700 dark:text-green-300";
-                  else if (opt === selected) cls += "border-red-500 bg-red-100 dark:bg-red-950/30 text-red-700 dark:text-red-300";
-                  else cls += "border-border bg-card text-muted-foreground opacity-50";
-                }
-                return (
-                  <button key={opt} onClick={() => handleAnswer(opt)} className={cls}>
-                    {opt === "True" ? "✅ True" : "❌ False"}
-                  </button>
-                );
-              })}
-            </div>
-          )}
-
-          {/* Match */}
-          {q.type === "match" && q.pairs && (
-            <div className="flex gap-3 flex-1">
-              <div className="flex-1 space-y-2">
-                <div className="text-xs font-semibold text-muted-foreground mb-2">Term</div>
-                {q.pairs.map((p) => {
-                  const isMatched = matchedPairs.includes(p.left);
-                  const isSelected = matchLeft === p.left;
-                  return (
-                    <button
-                      key={p.left}
-                      onClick={() => !isMatched && handleMatchSelect("left", p.left)}
-                      className={`w-full text-left rounded-xl border p-3 text-sm font-medium transition-all ${isMatched ? "border-green-500 bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-300" : isSelected ? "border-primary bg-primary/10 text-primary" : "border-border bg-card text-foreground hover:border-primary"}`}
-                    >
-                      {p.left}
-                    </button>
-                  );
-                })}
-              </div>
-              <div className="flex-1 space-y-2">
-                <div className="text-xs font-semibold text-muted-foreground mb-2">Definition</div>
-                {q.pairs.map((p) => {
-                  const isMatched = matchedPairs.includes(p.right);
-                  return (
-                    <button
-                      key={p.right}
-                      onClick={() => !isMatched && handleMatchSelect("right", p.right)}
-                      className={`w-full text-left rounded-xl border p-3 text-sm transition-all ${isMatched ? "border-green-500 bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-300" : "border-border bg-card text-foreground hover:border-primary"}`}
-                    >
-                      {p.right}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* Feedback */}
-          {showFeedback && (
-            <div className={`mt-4 rounded-xl p-4 border ${isCorrect ? "bg-green-50 dark:bg-green-950/30 border-green-300 dark:border-green-700" : "bg-red-50 dark:bg-red-950/30 border-red-300 dark:border-red-700"}`}>
-              <div className={`font-bold mb-1 ${isCorrect ? "text-green-700 dark:text-green-300" : "text-red-700 dark:text-red-300"}`}>
-                {isCorrect ? `✓ Correct! +${10 + (streak - 1) * 2} XP` : "✗ Incorrect"}
-              </div>
-              <p className="text-sm text-foreground/80">{q.explanation}</p>
-              <Button onClick={nextQuestion} className={`w-full mt-3 ${isCorrect ? "bg-green-600 hover:bg-green-700" : "bg-red-600 hover:bg-red-700"} text-white`}>
-                {hearts === 0 ? "Game Over" : currentQ + 1 >= selectedLesson.questions.length ? "Complete Lesson" : "Next Question →"}
-              </Button>
-            </div>
-          )}
-        </div>
+  return (
+    <div>
+      <div style={{ display: "flex", gap: 4, marginBottom: 14 }}>
+        {MATCH_LEVELS.map((l, i) => (
+          <div key={i} style={{ flex: 1, height: 3, borderRadius: 99, background: i < levelIdx ? C.green : i === levelIdx ? l.color : C.border, transition: "background 0.4s" }} />
+        ))}
       </div>
-    );
-  }
-
-  // LESSON COMPLETE
-  if (screen === "lesson-complete") {
-    return (
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6">
-        <div className="max-w-sm w-full text-center">
-          <div className="text-6xl mb-4">🎉</div>
-          <h2 className="text-2xl font-bold text-foreground mb-1">Lesson Complete!</h2>
-          <p className="text-muted-foreground mb-6">{selectedLesson?.title}</p>
-          <div className="grid grid-cols-3 gap-3 mb-6">
-            <div className="rounded-xl bg-card border border-border p-3">
-              <div className="text-2xl font-bold text-amber-500">+{lessonXp}</div>
-              <div className="text-xs text-muted-foreground">XP Earned</div>
-            </div>
-            <div className="rounded-xl bg-card border border-border p-3">
-              <div className="text-2xl font-bold text-rose-500">{"❤️".repeat(hearts)}</div>
-              <div className="text-xs text-muted-foreground">Hearts Left</div>
-            </div>
-            <div className="rounded-xl bg-card border border-border p-3">
-              <div className="text-2xl font-bold text-orange-500">{streak}🔥</div>
-              <div className="text-xs text-muted-foreground">Best Streak</div>
-            </div>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+        <div>
+          <div style={{ color: level.color, fontFamily: FONT_CODE, fontSize: 10, letterSpacing: 1, marginBottom: 2 }}>LEVEL {level.level} / {MATCH_LEVELS.length}</div>
+          <div style={{ color: C.text, fontFamily: FONT_CODE, fontSize: 14 }}>{level.title}</div>
+        </div>
+        <Chip color={C.accent}>Total: {totalScore}</Chip>
+      </div>
+      {phase === "play" && <MatchRound key={levelIdx} levelData={level} onLevelComplete={handleLevelComplete} />}
+      {phase === "levelup" && (
+        <div style={{ textAlign: "center", padding: "32px 0" }}>
+          <div style={{ fontSize: 48, marginBottom: 12 }}>🏅</div>
+          <div style={{ color: level.color, fontFamily: FONT_CODE, fontSize: 18, marginBottom: 6 }}>{level.badge}</div>
+          <div style={{ color: C.muted, fontFamily: "monospace", fontSize: 12, marginBottom: 24 }}>
+            Level {level.level} cleared! Next: {MATCH_LEVELS[levelIdx + 1]?.title}
           </div>
+          <Btn onClick={nextLevel} color={MATCH_LEVELS[levelIdx + 1]?.color || C.accent}>Next Level →</Btn>
+        </div>
+      )}
+    </div>
+  );
+}
 
-          {!showLeaderboard ? (
-            <div className="space-y-3">
-              <Button onClick={() => {
-                const nextIdx = lessonIndex + 1;
-                if (selectedPath && nextIdx < selectedPath.lessons.length) {
-                  startLesson(selectedPath, nextIdx);
-                } else {
-                  setScreen("path-detail");
-                }
-              }} className="w-full h-12 font-semibold">
-                {selectedPath && lessonIndex + 1 < selectedPath.lessons.length ? "Next Lesson →" : "Back to Path"}
-              </Button>
-              <Button variant="outline" onClick={() => setShowLeaderboard(true)} className="w-full">
-                🏆 View Leaderboard
-              </Button>
-            </div>
-          ) : (
-            <div className="rounded-xl border border-border bg-card p-4 text-left mb-4">
-              <div className="font-bold text-foreground mb-3 text-center">🏆 Top 10 Players</div>
-              {leaderboard?.length ? leaderboard.map((entry: any, i: number) => (
-                <div key={entry.userId} className={`flex items-center gap-3 py-2 px-2 rounded-lg mb-1 ${entry.userId === user?.id ? "bg-green-50 dark:bg-green-950/30" : ""}`}>
-                  <span className="w-6 text-center text-sm">{i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `${i + 1}.`}</span>
-                  <span className="flex-1 text-sm font-medium text-foreground truncate">{entry.name}{entry.userId === user?.id ? " (You)" : ""}</span>
-                  <span className="text-amber-500 text-sm font-bold">{entry.totalXp} XP</span>
-                </div>
-              )) : <p className="text-muted-foreground text-sm text-center">No scores yet — you're first!</p>}
-              <Button variant="outline" onClick={() => setShowLeaderboard(false)} className="w-full mt-3 text-sm">Back</Button>
+// ─── ESCAPE ROOM GAME ──────────────────────────────────────────────────────────
+function EscapeRoomGame({ onComplete }) {
+  const [roomIdx, setRoomIdx] = useState(0);
+  const [cluesFound, setCluesFound] = useState([false, false, false]);
+  const [chosen, setChosen] = useState(null);
+  const [phase, setPhase] = useState("investigate"); // investigate | solve | result
+  const [timer, setTimer] = useState(90);
+  const [score, setScore] = useState(0);
+  const room = ESCAPE_ROOMS[roomIdx];
+
+  useEffect(() => {
+    if (phase !== "investigate") return;
+    const t = setInterval(() => setTimer(p => {
+      if (p <= 1) { clearInterval(t); setPhase("solve"); return 0; }
+      return p - 1;
+    }), 1000);
+    return () => clearInterval(t);
+  }, [phase, roomIdx]);
+
+  const findClue = (i) => {
+    if (cluesFound[i]) return;
+    const next = [...cluesFound]; next[i] = true; setCluesFound(next);
+    if (next.every(Boolean)) setTimeout(() => setPhase("solve"), 600);
+  };
+
+  const choose = (idx) => {
+    if (chosen !== null) return;
+    setChosen(idx);
+    if (room.choices[idx].correct) setScore(s => s + Math.max(50, timer * 2));
+    setPhase("result");
+  };
+
+  const nextRoom = () => {
+    if (roomIdx + 1 >= ESCAPE_ROOMS.length) { onComplete(score); return; }
+    setRoomIdx(r => r + 1);
+    setCluesFound([false, false, false]);
+    setChosen(null);
+    setPhase("investigate");
+    setTimer(90);
+  };
+
+  const timerColor = timer > 60 ? C.green : timer > 30 ? C.accent : C.red;
+
+  return (
+    <div>
+      <div style={{ display: "flex", gap: 4, marginBottom: 14 }}>
+        {ESCAPE_ROOMS.map((_, i) => (
+          <div key={i} style={{ flex: 1, height: 3, borderRadius: 99, background: i < roomIdx ? C.green : i === roomIdx ? C.red : C.border }} />
+        ))}
+      </div>
+
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+        <div>
+          <div style={{ color: C.red, fontFamily: FONT_CODE, fontSize: 10, letterSpacing: 1, marginBottom: 2 }}>INCIDENT {roomIdx + 1} / {ESCAPE_ROOMS.length}</div>
+          <div style={{ color: C.text, fontFamily: FONT_CODE, fontSize: 14 }}>{room.title}</div>
+        </div>
+        {phase === "investigate" && (
+          <div style={{ fontFamily: FONT_CODE, fontSize: 20, color: timerColor, textShadow: `0 0 12px ${timerColor}70` }}>
+            {String(Math.floor(timer / 60)).padStart(2, "0")}:{String(timer % 60).padStart(2, "0")}
+          </div>
+        )}
+        <Chip color={C.accent}>Score: {score}</Chip>
+      </div>
+
+      <Panel style={{ marginBottom: 14, borderColor: `${C.red}40` }}>
+        <div style={{ color: C.red, fontFamily: FONT_CODE, fontSize: 10, letterSpacing: 1, marginBottom: 8 }}>🚨 INCIDENT REPORT</div>
+        <p style={{ color: C.text, margin: 0, fontFamily: "monospace", fontSize: 12, lineHeight: 1.7 }}>{room.story}</p>
+      </Panel>
+
+      {phase === "investigate" && (
+        <div>
+          <div style={{ color: C.muted, fontFamily: FONT_CODE, fontSize: 10, letterSpacing: 1, marginBottom: 10 }}>
+            INVESTIGATE CLUES — click each to reveal ({cluesFound.filter(Boolean).length}/{room.clues.length} found)
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {room.clues.map((clue, i) => (
+              <div key={i} onClick={() => findClue(i)} style={{
+                padding: "12px 16px", borderRadius: 8,
+                border: `1px solid ${cluesFound[i] ? C.blue : C.border}`,
+                background: cluesFound[i] ? `${C.blue}12` : C.raised,
+                cursor: cluesFound[i] ? "default" : "pointer",
+                transition: "all 0.2s",
+              }}>
+                {cluesFound[i] ? (
+                  <span style={{ color: C.blue, fontFamily: "monospace", fontSize: 12 }}>🔍 {clue.text}</span>
+                ) : (
+                  <span style={{ color: C.muted, fontFamily: FONT_CODE, fontSize: 11 }}>[ CLUE {i + 1} — click to investigate ]</span>
+                )}
+              </div>
+            ))}
+          </div>
+          {cluesFound.every(Boolean) && (
+            <div style={{ marginTop: 14 }}>
+              <Btn onClick={() => setPhase("solve")} color={C.accent}>Solve the Incident →</Btn>
             </div>
           )}
         </div>
-      </div>
-    );
-  }
+      )}
 
-  // ESCAPE ROOM QUESTION
-  if (screen === "escape-question") {
-    const challenge = ESCAPE_CHALLENGES[escapeIndex];
-    const timerPct = (escapeTimer / 60) * 100;
-    return (
-      <div className="min-h-screen bg-background flex flex-col">
-        <div className="border-b border-border bg-card px-4 py-3">
-          <div className="flex items-center gap-3 mb-2">
-            <button onClick={() => { setEscapeTimerActive(false); setScreen("hub"); setActiveTab("escape"); }} className="text-muted-foreground hover:text-foreground text-sm">✕</button>
-            <span className="font-semibold text-foreground flex-1">🚨 Escape Room</span>
-            <span className="text-sm text-muted-foreground">{escapeIndex + 1}/{ESCAPE_CHALLENGES.length}</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <Progress value={timerPct} className={`flex-1 h-2 ${escapeTimer <= 10 ? "[&>div]:bg-red-500" : "[&>div]:bg-amber-500"}`} />
-            <span className={`text-sm font-bold w-8 text-right ${escapeTimer <= 10 ? "text-red-500" : "text-amber-500"}`}>{escapeTimer}s</span>
+      {phase === "solve" && chosen === null && (
+        <div>
+          <div style={{ color: C.accent, fontFamily: FONT_CODE, fontSize: 10, letterSpacing: 1, marginBottom: 10 }}>SELECT THE CORRECT REMEDIATION:</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {room.choices.map((choice, i) => (
+              <div key={i} onClick={() => choose(i)} style={{
+                padding: "12px 16px", borderRadius: 8,
+                border: `1px solid ${C.border}`, background: C.raised,
+                cursor: "pointer", color: C.text, fontFamily: "monospace", fontSize: 12,
+                transition: "all 0.15s",
+              }}
+                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = C.accent; (e.currentTarget as HTMLElement).style.background = `${C.accent}0d`; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = C.border; (e.currentTarget as HTMLElement).style.background = C.raised; }}
+              >
+                {String.fromCharCode(65 + i)}. {choice.text}
+              </div>
+            ))}
           </div>
         </div>
-        <div className="flex-1 p-4 max-w-2xl mx-auto w-full flex flex-col">
-          <div className="rounded-2xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/20 p-5 mb-6">
-            <p className="text-foreground font-semibold leading-relaxed">{challenge.scenario}</p>
+      )}
+
+      {phase === "result" && chosen !== null && (
+        <div>
+          <Panel style={{
+            marginBottom: 14,
+            borderColor: room.choices[chosen].correct ? `${C.green}60` : `${C.red}60`,
+            background: room.choices[chosen].correct ? `${C.green}08` : `${C.red}08`,
+          }}>
+            <div style={{ fontSize: 20, marginBottom: 8 }}>
+              {room.choices[chosen].correct ? "✅ Incident Resolved!" : "❌ Wrong Remediation"}
+            </div>
+            <p style={{ color: C.text, margin: 0, fontFamily: "monospace", fontSize: 12, lineHeight: 1.7 }}>
+              {room.choices[chosen].feedback}
+            </p>
+          </Panel>
+          <Btn onClick={nextRoom} color={C.accent}>
+            {roomIdx + 1 >= ESCAPE_ROOMS.length ? "Complete Escape Room 🏁" : "Next Incident →"}
+          </Btn>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── TROUBLESHOOT GAME ─────────────────────────────────────────────────────────
+function TroubleshootGame({ onComplete }) {
+  const [caseIdx, setCaseIdx] = useState(0);
+  const [selected, setSelected] = useState(new Set());
+  const [checked, setChecked] = useState(false);
+  const [score, setScore] = useState(0);
+  const tc = TROUBLESHOOT_CASES[caseIdx];
+
+  const toggle = (id) => {
+    if (checked) return;
+    const ns = new Set(selected);
+    ns.has(id) ? ns.delete(id) : ns.add(id);
+    setSelected(ns);
+  };
+
+  const check = () => {
+    const correctIds = tc.steps.filter(s => s.correct).map(s => s.id);
+    const correctSelected = correctIds.filter(id => selected.has(id)).length;
+    const wrongSelected = [...selected].filter(id => !correctIds.includes(id)).length;
+    const pts = Math.max(0, (correctSelected - wrongSelected) * 50);
+    setScore(s => s + pts);
+    setChecked(true);
+  };
+
+  const next = () => {
+    if (caseIdx + 1 >= TROUBLESHOOT_CASES.length) { onComplete(score); return; }
+    setCaseIdx(c => c + 1);
+    setSelected(new Set());
+    setChecked(false);
+  };
+
+  return (
+    <div>
+      <div style={{ display: "flex", gap: 4, marginBottom: 14 }}>
+        {TROUBLESHOOT_CASES.map((_, i) => (
+          <div key={i} style={{ flex: 1, height: 3, borderRadius: 99, background: i < caseIdx ? C.green : i === caseIdx ? "#e11d48" : C.border }} />
+        ))}
+      </div>
+
+      <div style={{ color: "#e11d48", fontFamily: FONT_CODE, fontSize: 10, letterSpacing: 1, marginBottom: 6 }}>
+        CASE {caseIdx + 1} / {TROUBLESHOOT_CASES.length}
+      </div>
+      <div style={{ color: C.text, fontFamily: FONT_CODE, fontSize: 14, marginBottom: 14 }}>{tc.title}</div>
+
+      <Panel style={{ marginBottom: 10, borderColor: `${C.red}30` }}>
+        <div style={{ color: C.red, fontFamily: FONT_CODE, fontSize: 10, letterSpacing: 1, marginBottom: 8 }}>SYMPTOMS</div>
+        {tc.symptoms.map((s, i) => <div key={i} style={{ color: C.text, fontFamily: "monospace", fontSize: 11, marginBottom: 4 }}>• {s}</div>)}
+      </Panel>
+
+      <Panel style={{ marginBottom: 14, borderColor: `${C.blue}30` }}>
+        <div style={{ color: C.blue, fontFamily: FONT_CODE, fontSize: 10, letterSpacing: 1, marginBottom: 8 }}>LOG EVIDENCE</div>
+        {tc.logs.map((l, i) => <div key={i} style={{ color: C.muted, fontFamily: "monospace", fontSize: 10, marginBottom: 4 }}>$ {l}</div>)}
+      </Panel>
+
+      <div style={{ color: C.accent, fontFamily: FONT_CODE, fontSize: 10, letterSpacing: 1, marginBottom: 10 }}>
+        SELECT ALL CORRECT TROUBLESHOOTING STEPS:
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 7, marginBottom: 14 }}>
+        {tc.steps.map(step => {
+          const isSel = selected.has(step.id);
+          const isCorrect = checked && step.correct;
+          const isWrong = checked && isSel && !step.correct;
+          const isMissed = checked && !isSel && step.correct;
+          return (
+            <div key={step.id} onClick={() => toggle(step.id)} style={{
+              padding: "10px 14px", borderRadius: 8,
+              border: `1px solid ${isCorrect ? C.green : isWrong ? C.red : isMissed ? `${C.green}50` : isSel ? C.accent : C.border}`,
+              background: isCorrect ? `${C.green}12` : isWrong ? `${C.red}12` : isMissed ? `${C.green}06` : isSel ? `${C.accent}0d` : C.raised,
+              color: isCorrect ? C.green : isWrong ? C.red : isMissed ? `${C.green}80` : C.text,
+              cursor: checked ? "default" : "pointer",
+              fontFamily: "monospace", fontSize: 11, transition: "all 0.15s",
+              display: "flex", alignItems: "center", gap: 10,
+            }}>
+              <div style={{ width: 16, height: 16, borderRadius: 3, border: `1px solid ${isSel ? C.accent : C.border}`, background: isSel ? `${C.accent}30` : "transparent", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10 }}>
+                {isSel ? "✓" : ""}
+              </div>
+              {step.text}
+              {isCorrect && <span style={{ marginLeft: "auto" }}>✅</span>}
+              {isWrong && <span style={{ marginLeft: "auto" }}>❌</span>}
+              {isMissed && <span style={{ marginLeft: "auto", fontSize: 10, color: `${C.green}80` }}>missed</span>}
+            </div>
+          );
+        })}
+      </div>
+
+      {!checked && <Btn onClick={check} disabled={selected.size === 0}>Check Diagnosis</Btn>}
+      {checked && (
+        <div>
+          <Panel style={{ marginBottom: 14, borderColor: `${C.blue}40`, background: `${C.blue}08` }}>
+            <div style={{ color: C.blue, fontFamily: FONT_CODE, fontSize: 10, letterSpacing: 1, marginBottom: 6 }}>ROOT CAUSE</div>
+            <p style={{ color: C.text, margin: 0, fontFamily: "monospace", fontSize: 12, lineHeight: 1.7 }}>{tc.rootCause}</p>
+            <div style={{ color: C.muted, fontFamily: FONT_CODE, fontSize: 10, letterSpacing: 1, marginTop: 10, marginBottom: 6 }}>EXPLANATION</div>
+            <p style={{ color: C.muted, margin: 0, fontFamily: "monospace", fontSize: 11, lineHeight: 1.6 }}>{tc.explanation}</p>
+          </Panel>
+          <Btn onClick={next} color={C.accent}>
+            {caseIdx + 1 >= TROUBLESHOOT_CASES.length ? "Complete Troubleshoot 🏁" : "Next Case →"}
+          </Btn>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── SCENARIO QUIZ ─────────────────────────────────────────────────────────────
+function ScenarioQuiz({ onComplete }) {
+  const [qIdx, setQIdx] = useState(0);
+  const [chosen, setChosen] = useState(null);
+  const [score, setScore] = useState(0);
+  const q = SCENARIO_QUESTIONS[qIdx];
+
+  const pick = (i) => {
+    if (chosen !== null) return;
+    setChosen(i);
+    if (i === q.correct) setScore(s => s + 100);
+  };
+
+  const next = () => {
+    if (qIdx + 1 >= SCENARIO_QUESTIONS.length) { onComplete(score); return; }
+    setQIdx(i => i + 1);
+    setChosen(null);
+  };
+
+  return (
+    <div>
+      <div style={{ display: "flex", gap: 4, marginBottom: 14 }}>
+        {SCENARIO_QUESTIONS.map((_, i) => (
+          <div key={i} style={{ flex: 1, height: 3, borderRadius: 99, background: i < qIdx ? C.green : i === qIdx ? C.accent : C.border }} />
+        ))}
+      </div>
+      <div style={{ color: C.accent, fontFamily: FONT_CODE, fontSize: 10, letterSpacing: 1, marginBottom: 6 }}>
+        SCENARIO {qIdx + 1} / {SCENARIO_QUESTIONS.length}
+      </div>
+      <Panel style={{ marginBottom: 14, borderColor: `${C.accent}30` }}>
+        <p style={{ color: C.text, margin: 0, fontFamily: "monospace", fontSize: 13, lineHeight: 1.7 }}>{q.q}</p>
+      </Panel>
+      <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 14 }}>
+        {q.options.map((opt, i) => {
+          const isC = i === q.correct, isCh = i === chosen;
+          let border = C.border, bg = C.raised, col = C.text;
+          if (chosen !== null) {
+            if (isC) { border = C.green; bg = `${C.green}15`; col = C.green; }
+            else if (isCh) { border = C.red; bg = `${C.red}15`; col = C.red; }
+          }
+          return (
+            <div key={i} onClick={() => pick(i)} style={{
+              padding: "12px 16px", borderRadius: 8,
+              border: `1px solid ${border}`, background: bg, color: col,
+              cursor: chosen !== null ? "default" : "pointer",
+              fontFamily: "monospace", fontSize: 12, transition: "all 0.2s",
+              display: "flex", alignItems: "center", gap: 10,
+            }}>
+              <div style={{ width: 22, height: 22, borderRadius: "50%", background: chosen !== null && isC ? C.green : chosen !== null && isCh ? C.red : C.dim, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, color: "#fff", flexShrink: 0 }}>
+                {String.fromCharCode(65 + i)}
+              </div>
+              {opt}
+            </div>
+          );
+        })}
+      </div>
+      {chosen !== null && (
+        <Panel style={{ marginBottom: 14, borderColor: `${C.blue}40`, background: `${C.blue}08` }}>
+          <div style={{ color: C.blue, fontFamily: FONT_CODE, fontSize: 10, letterSpacing: 1, marginBottom: 6 }}>💡 EXPLANATION</div>
+          <p style={{ color: C.text, margin: 0, fontFamily: "monospace", fontSize: 12, lineHeight: 1.6 }}>{q.explanation}</p>
+        </Panel>
+      )}
+      {chosen !== null && <Btn onClick={next} color={C.blue}>{qIdx + 1 >= SCENARIO_QUESTIONS.length ? "Finish Quiz 🏁" : "Next Question →"}</Btn>}
+    </div>
+  );
+}
+
+// ─── RPG CAMPAIGN ──────────────────────────────────────────────────────────────
+function RPGCampaign({ onComplete }) {
+  const [missionIdx, setMissionIdx] = useState(0);
+  const [totalXP, setTotalXP] = useState(0);
+  const [phase, setPhase] = useState("briefing");
+  const [chosen, setChosen] = useState(null);
+  const [badges, setBadges] = useState([]);
+  const mission = RPG_MISSIONS[missionIdx];
+
+  const pick = (i) => {
+    if (chosen !== null) return;
+    setChosen(i);
+    if (i === mission.quiz.correct) {
+      setTotalXP(x => x + mission.xp);
+      setBadges(b => [...b, mission.badge]);
+    }
+    setPhase("reward");
+  };
+
+  const next = () => {
+    if (missionIdx + 1 >= RPG_MISSIONS.length) { onComplete(totalXP); return; }
+    setMissionIdx(m => m + 1);
+    setChosen(null);
+    setPhase("briefing");
+  };
+
+  return (
+    <div>
+      <Panel style={{ marginBottom: 14 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div>
+            <div style={{ color: C.accent, fontFamily: FONT_CODE, fontSize: 12, fontWeight: "bold" }}>🧙 AWS Architect</div>
+            <div style={{ display: "flex", gap: 6, marginTop: 6, flexWrap: "wrap" }}>
+              {badges.map((b, i) => <Chip key={i} color={C.purple}>{b}</Chip>)}
+              {badges.length === 0 && <span style={{ color: C.muted, fontSize: 11, fontFamily: "monospace" }}>No badges yet...</span>}
+            </div>
           </div>
-          <div className="space-y-3 flex-1">
-            {challenge.options.map((opt) => {
-              let cls = "w-full text-left rounded-xl border p-4 text-sm font-medium transition-all ";
-              if (!escapeShowFeedback) {
-                cls += escapeSelected === opt ? "border-primary bg-primary/10 text-primary" : "border-border bg-card text-foreground hover:border-primary";
-              } else {
-                if (opt === challenge.correct) cls += "border-green-500 bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-300";
-                else if (opt === escapeSelected && opt !== challenge.correct) cls += "border-red-500 bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-300";
-                else cls += "border-border bg-card text-muted-foreground opacity-60";
+          <div style={{ textAlign: "right" }}>
+            <div style={{ color: C.green, fontFamily: FONT_CODE, fontSize: 22, fontWeight: "bold" }}>{totalXP}</div>
+            <div style={{ color: C.muted, fontFamily: FONT_CODE, fontSize: 9 }}>XP</div>
+          </div>
+        </div>
+        <div style={{ marginTop: 10 }}>
+          <XPBar xp={totalXP} maxXp={1000} color={C.green} />
+        </div>
+      </Panel>
+
+      <div style={{ display: "flex", gap: 6, marginBottom: 14 }}>
+        {RPG_MISSIONS.map((m, i) => (
+          <div key={i} style={{
+            flex: 1, padding: "8px 10px", borderRadius: 8,
+            border: `1px solid ${i === missionIdx ? C.accent : i < missionIdx ? C.green : C.border}`,
+            background: i === missionIdx ? `${C.accent}15` : "transparent",
+            textAlign: "center",
+          }}>
+            <div style={{ fontSize: 16 }}>{i < missionIdx ? "✅" : i === missionIdx ? "⚔️" : "🔒"}</div>
+            <div style={{ color: C.muted, fontFamily: FONT_CODE, fontSize: 9, marginTop: 3 }}>LVL {m.level}</div>
+          </div>
+        ))}
+      </div>
+
+      {phase === "briefing" && (
+        <Panel style={{ borderColor: `${C.accent}40` }}>
+          <div style={{ color: C.accent, fontFamily: FONT_CODE, fontSize: 10, letterSpacing: 1, marginBottom: 8 }}>
+            ⚔️ MISSION {mission.level}: {mission.title.toUpperCase()}
+          </div>
+          <p style={{ color: C.text, margin: "0 0 14px", fontSize: 12, lineHeight: 1.7, fontFamily: "monospace" }}>{mission.description}</p>
+          <div style={{ marginBottom: 14 }}>
+            <div style={{ color: C.muted, fontFamily: FONT_CODE, fontSize: 10, marginBottom: 8 }}>REQUIRED SERVICES:</div>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              {mission.services.map(s => <Chip key={s} color={C.blue}>{s}</Chip>)}
+            </div>
+          </div>
+          <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+            <Btn onClick={() => setPhase("quiz")}>Accept Mission ⚔️</Btn>
+            <Chip color={C.green}>+{mission.xp} XP reward</Chip>
+          </div>
+        </Panel>
+      )}
+
+      {phase === "quiz" && (
+        <div>
+          <Panel style={{ marginBottom: 14, borderColor: `${C.purple}40` }}>
+            <p style={{ color: C.text, margin: 0, fontSize: 13, fontFamily: "monospace", lineHeight: 1.6 }}>🧠 {mission.quiz.q}</p>
+          </Panel>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {mission.quiz.options.map((opt, i) => {
+              let bc = C.border, bg = C.raised, col = C.text;
+              if (chosen !== null) {
+                if (i === mission.quiz.correct) { bc = C.green; bg = `${C.green}15`; col = C.green; }
+                else if (i === chosen) { bc = C.red; bg = `${C.red}15`; col = C.red; }
               }
-              return <button key={opt} onClick={() => handleEscapeAnswer(opt)} className={cls}>{opt}</button>;
+              return (
+                <div key={i} onClick={() => pick(i)} style={{
+                  padding: "12px 16px", borderRadius: 8,
+                  border: `1px solid ${bc}`, background: bg, color: col,
+                  cursor: "pointer", fontFamily: "monospace", fontSize: 12, transition: "all 0.2s",
+                }}>
+                  {String.fromCharCode(65 + i)}. {opt}
+                </div>
+              );
             })}
           </div>
-          {escapeShowFeedback && (
-            <div className={`mt-4 rounded-xl p-4 border ${escapeCorrect ? "bg-green-50 dark:bg-green-950/30 border-green-300" : "bg-red-50 dark:bg-red-950/30 border-red-300"}`}>
-              <div className={`font-bold mb-1 ${escapeCorrect ? "text-green-700 dark:text-green-300" : "text-red-700 dark:text-red-300"}`}>
-                {escapeTimer <= 0 ? "⏰ Time's up!" : escapeCorrect ? "✓ Incident Resolved!" : "✗ Wrong approach"}
-              </div>
-              <p className="text-sm text-foreground/80">{challenge.explanation}</p>
-              <Button onClick={nextEscape} className="w-full mt-3">
-                {escapeIndex + 1 >= ESCAPE_CHALLENGES.length ? "See Results" : "Next Challenge →"}
-              </Button>
-            </div>
-          )}
         </div>
-      </div>
-    );
-  }
+      )}
 
-  // ESCAPE COMPLETE
-  if (screen === "escape-complete") {
+      {phase === "reward" && (
+        <div>
+          <Panel style={{
+            marginBottom: 14,
+            borderColor: chosen === mission.quiz.correct ? `${C.green}60` : `${C.red}60`,
+            background: chosen === mission.quiz.correct ? `${C.green}08` : `${C.red}08`,
+          }}>
+            {chosen === mission.quiz.correct ? (
+              <>
+                <div style={{ fontSize: 22, marginBottom: 8 }}>🏆 Mission Complete!</div>
+                <div style={{ color: C.green, fontFamily: "monospace", fontSize: 12 }}>
+                  +{mission.xp} XP earned! Badge unlocked: {mission.badge}
+                </div>
+              </>
+            ) : (
+              <>
+                <div style={{ fontSize: 22, marginBottom: 8 }}>💀 Mission Failed</div>
+                <div style={{ color: C.red, fontFamily: "monospace", fontSize: 12 }}>
+                  No XP earned. Correct answer: <strong>{mission.quiz.options[mission.quiz.correct]}</strong>
+                </div>
+              </>
+            )}
+          </Panel>
+          <Btn onClick={next} color={C.accent}>
+            {missionIdx + 1 >= RPG_MISSIONS.length ? "Complete Campaign! 🎖️" : "Next Mission →"}
+          </Btn>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── RESULT SCREEN ─────────────────────────────────────────────────────────────
+function ResultScreen({ mode, score, onBack }) {
+  const tier = score >= 400 ? "🥇 GOLD" : score >= 200 ? "🥈 SILVER" : "🥉 BRONZE";
+  const tierColor = score >= 400 ? C.accent : score >= 200 ? "#94a3b8" : "#cd7f32";
+  return (
+    <div style={{ textAlign: "center", padding: "48px 0" }}>
+      <div style={{ fontSize: 56, marginBottom: 16 }}>🏁</div>
+      <div style={{ color: C.muted, fontFamily: FONT_CODE, fontSize: 11, letterSpacing: 2, marginBottom: 8 }}>MODE COMPLETE</div>
+      <div style={{ color: C.text, fontFamily: FONT_CODE, fontSize: 18, marginBottom: 24 }}>{mode.toUpperCase()}</div>
+      <div style={{
+        fontSize: 52, fontWeight: "bold", color: tierColor,
+        fontFamily: FONT_CODE, textShadow: `0 0 30px ${tierColor}80`, marginBottom: 8,
+      }}>{score}</div>
+      <div style={{ color: tierColor, fontFamily: FONT_CODE, fontSize: 16, marginBottom: 32 }}>{tier}</div>
+      <Btn onClick={onBack} color={C.accent}>← Back to Hub</Btn>
+    </div>
+  );
+}
+
+// ─── GAME MODES CONFIG ─────────────────────────────────────────────────────────
+const MODES = [
+  { id:"matching",     label:"Match It",      icon:"🔗", color:C.purple,  desc:"Match AWS services to their definitions across 31 levels",     difficulty:"Beginner" },
+  { id:"escape",       label:"Escape Room",   icon:"🚨", color:C.red,     desc:"Investigate clues and solve 6 real AWS incidents under the clock", difficulty:"Advanced" },
+  { id:"troubleshoot", label:"Troubleshoot",  icon:"🔧", color:"#e11d48", desc:"Diagnose real AWS issues from symptoms and log evidence",        difficulty:"Advanced" },
+  { id:"scenario",     label:"Scenario Quiz", icon:"💼", color:C.accent,  desc:"Answer real-world architecture scenario questions",              difficulty:"Intermediate" },
+  { id:"rpg",          label:"RPG Campaign",  icon:"⚔️", color:C.green,   desc:"Complete missions, earn XP, unlock badges as an AWS Architect",  difficulty:"All Levels" },
+];
+
+// ─── MAIN COMPONENT ────────────────────────────────────────────────────────────
+export default function AwsGame() {
+  const [, navigate] = useLocation();
+  const { user } = useAuth();
+  const [view, setView] = useState("hub");
+  const [activeMode, setActiveMode] = useState(null);
+  const [result, setResult] = useState(null);
+  const [allScores, setAllScores] = useState({});
+  const submitScore = trpc.game?.submitScore?.useMutation?.();
+  const { data: leaderboard } = trpc.game?.getLeaderboard?.useQuery?.() ?? { data: null };
+  const [showLeaderboard, setShowLeaderboard] = useState(false);
+
+  const totalScore = Object.values(allScores).reduce((a: number, b: any) => a + b, 0);
+
+  const handleComplete = (score) => {
+    setAllScores(s => ({ ...s, [activeMode]: (s[activeMode] || 0) + score }));
+    if (user && submitScore) {
+      submitScore.mutate({ xpEarned: score, lessonsCompleted: 1, streak: 0 });
+    }
+    setResult({ mode: activeMode, score });
+  };
+
+  // Result screen
+  if (result) return (
+    <div style={{ minHeight: "100vh", background: C.bg, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
+      <div style={{ width: "100%", maxWidth: 640 }}>
+        <ResultScreen mode={result.mode} score={result.score}
+          onBack={() => { setResult(null); setView("hub"); setActiveMode(null); }} />
+      </div>
+    </div>
+  );
+
+  // Active game
+  if (view === "game" && activeMode) {
+    const mode = MODES.find(m => m.id === activeMode);
     return (
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6">
-        <div className="max-w-sm w-full text-center">
-          <div className="text-6xl mb-4">{escapeSolved >= 5 ? "🏆" : escapeSolved >= 3 ? "🎯" : "💪"}</div>
-          <h2 className="text-2xl font-bold text-foreground mb-1">Escape Room Complete!</h2>
-          <p className="text-muted-foreground mb-6">You solved {escapeSolved} out of {ESCAPE_CHALLENGES.length} incidents</p>
-          <div className="rounded-xl bg-card border border-border p-4 mb-6">
-            <div className="text-3xl font-bold text-foreground">{escapeSolved}/{ESCAPE_CHALLENGES.length}</div>
-            <div className="text-muted-foreground text-sm">Incidents Resolved</div>
-            <div className="mt-2 text-sm text-foreground/80">
-              {escapeSolved === 6 ? "Perfect score! You're an AWS incident responder! 🌟" : escapeSolved >= 4 ? "Great job! Keep studying to master all scenarios." : "Keep practicing — these scenarios get easier with experience."}
+      <div style={{ minHeight: "100vh", background: C.bg, padding: "20px 16px" }}>
+        <style>{`@import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=JetBrains+Mono:wght@400;600;700&display=swap');`}</style>
+        <div style={{ maxWidth: 700, margin: "0 auto" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+            <button onClick={() => { setView("hub"); setActiveMode(null); }} style={{
+              background: "none", border: `1px solid ${C.border}`, color: C.muted,
+              padding: "6px 14px", borderRadius: 6, cursor: "pointer",
+              fontFamily: FONT_CODE, fontSize: 11, letterSpacing: 1,
+            }}>← HUB</button>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ color: mode.color, fontFamily: FONT_CODE, fontSize: 11, letterSpacing: 1 }}>{mode.icon} {mode.label.toUpperCase()}</span>
             </div>
+            <Chip color={C.accent}>Total: {totalScore}</Chip>
           </div>
-          <div className="space-y-3">
-            <Button onClick={startEscape} className="w-full h-12 font-semibold">Try Again</Button>
-            <Button variant="outline" onClick={() => { setScreen("hub"); setActiveTab("escape"); }} className="w-full">Back to Hub</Button>
-          </div>
+          <Panel>
+            {activeMode === "matching"     && <MatchingGame onComplete={handleComplete} />}
+            {activeMode === "escape"       && <EscapeRoomGame onComplete={handleComplete} />}
+            {activeMode === "troubleshoot" && <TroubleshootGame onComplete={handleComplete} />}
+            {activeMode === "scenario"     && <ScenarioQuiz onComplete={handleComplete} />}
+            {activeMode === "rpg"          && <RPGCampaign onComplete={handleComplete} />}
+          </Panel>
         </div>
       </div>
     );
   }
 
-  return null;
+  // Hub
+  return (
+    <div style={{ minHeight: "100vh", background: C.bg, padding: "20px 16px" }}>
+      <style>{`@import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=JetBrains+Mono:wght@400;600;700&display=swap');`}</style>
+      <div style={{ maxWidth: 700, margin: "0 auto" }}>
+        {/* Header */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 28 }}>
+          <div>
+            <button onClick={() => navigate("/dashboard")} style={{
+              background: "none", border: "none", color: C.muted, cursor: "pointer",
+              fontFamily: FONT_CODE, fontSize: 11, letterSpacing: 1, padding: 0, marginBottom: 10,
+            }}>← BACK TO DASHBOARD</button>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <div style={{
+                width: 40, height: 40, borderRadius: 10,
+                background: `linear-gradient(135deg,${C.accent}30,${C.accentDim}20)`,
+                border: `1px solid ${C.accent}50`,
+                display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20,
+              }}>☁️</div>
+              <div>
+                <div style={{ color: C.text, fontFamily: FONT_CODE, fontSize: 16, fontWeight: "bold" }}>
+                  <GlowText color={C.accent}>AWS</GlowText> Training Arena
+                </div>
+                <div style={{ color: C.muted, fontFamily: FONT_CODE, fontSize: 10, letterSpacing: 1 }}>
+                  {MODES.length} GAME MODES · {MATCH_LEVELS.length} MATCH LEVELS · {ESCAPE_ROOMS.length} INCIDENTS
+                </div>
+              </div>
+            </div>
+          </div>
+          <div style={{ textAlign: "right" }}>
+            <div style={{ color: C.accent, fontFamily: FONT_CODE, fontSize: 20, fontWeight: "bold" }}>{totalScore}</div>
+            <div style={{ color: C.muted, fontFamily: FONT_CODE, fontSize: 9, letterSpacing: 1 }}>SESSION XP</div>
+          </div>
+        </div>
+
+        {/* Leaderboard toggle */}
+        {leaderboard && leaderboard.length > 0 && (
+          <div style={{ marginBottom: 20 }}>
+            <button onClick={() => setShowLeaderboard(!showLeaderboard)} style={{
+              background: "none", border: `1px solid ${C.border}`, color: C.muted,
+              padding: "6px 14px", borderRadius: 6, cursor: "pointer",
+              fontFamily: FONT_CODE, fontSize: 10, letterSpacing: 1,
+            }}>
+              {showLeaderboard ? "▲ HIDE LEADERBOARD" : "▼ SHOW LEADERBOARD"}
+            </button>
+            {showLeaderboard && (
+              <Panel style={{ marginTop: 10 }}>
+                <div style={{ color: C.accent, fontFamily: FONT_CODE, fontSize: 11, letterSpacing: 1, marginBottom: 12 }}>🏆 TOP PLAYERS</div>
+                {leaderboard.map((row: any) => (
+                  <div key={row.userId} style={{
+                    display: "flex", justifyContent: "space-between", alignItems: "center",
+                    padding: "8px 0", borderBottom: `1px solid ${C.border}`,
+                    background: row.isCurrentUser ? `${C.green}08` : "transparent",
+                  }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                      <span style={{ color: C.accent, fontFamily: FONT_CODE, fontSize: 12, width: 24 }}>#{row.rank}</span>
+                      <span style={{ color: row.isCurrentUser ? C.green : C.text, fontFamily: "monospace", fontSize: 12 }}>
+                        {row.name}{row.isCurrentUser ? " (you)" : ""}
+                      </span>
+                    </div>
+                    <Chip color={C.accent}>{row.totalXp} XP</Chip>
+                  </div>
+                ))}
+              </Panel>
+            )}
+          </div>
+        )}
+
+        {/* Mode grid */}
+        <div style={{ color: C.muted, fontFamily: FONT_CODE, fontSize: 10, letterSpacing: 2, marginBottom: 14 }}>SELECT GAME MODE</div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 28 }}>
+          {MODES.map(mode => (
+            <div key={mode.id} onClick={() => { setActiveMode(mode.id); setView("game"); }} style={{
+              background: C.panel,
+              border: `1px solid ${C.border}`,
+              borderRadius: 12, padding: "18px 16px",
+              cursor: "pointer", transition: "all 0.2s",
+            }}
+              onMouseEnter={e => {
+                (e.currentTarget as HTMLElement).style.borderColor = mode.color;
+                (e.currentTarget as HTMLElement).style.boxShadow = `0 0 20px ${mode.color}20`;
+              }}
+              onMouseLeave={e => {
+                (e.currentTarget as HTMLElement).style.borderColor = C.border;
+                (e.currentTarget as HTMLElement).style.boxShadow = "none";
+              }}
+            >
+              <div style={{ fontSize: 28, marginBottom: 10 }}>{mode.icon}</div>
+              <div style={{ color: mode.color, fontFamily: FONT_CODE, fontSize: 13, fontWeight: "bold", marginBottom: 4 }}>{mode.label}</div>
+              <div style={{ color: C.muted, fontFamily: "monospace", fontSize: 10, lineHeight: 1.5, marginBottom: 10 }}>{mode.desc}</div>
+              <Chip color={mode.color}>{mode.difficulty}</Chip>
+              {allScores[mode.id] && (
+                <div style={{ marginTop: 8 }}>
+                  <Chip color={C.green}>Best: {allScores[mode.id]}</Chip>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+
+        {/* Stats bar */}
+        <Panel>
+          <div style={{ display: "flex", justifyContent: "space-around", textAlign: "center" }}>
+            <div>
+              <div style={{ color: C.accent, fontFamily: FONT_CODE, fontSize: 20, fontWeight: "bold" }}>{MATCH_LEVELS.length}</div>
+              <div style={{ color: C.muted, fontFamily: FONT_CODE, fontSize: 9, letterSpacing: 1 }}>MATCH LEVELS</div>
+            </div>
+            <div>
+              <div style={{ color: C.red, fontFamily: FONT_CODE, fontSize: 20, fontWeight: "bold" }}>{ESCAPE_ROOMS.length}</div>
+              <div style={{ color: C.muted, fontFamily: FONT_CODE, fontSize: 9, letterSpacing: 1 }}>INCIDENTS</div>
+            </div>
+            <div>
+              <div style={{ color: C.blue, fontFamily: FONT_CODE, fontSize: 20, fontWeight: "bold" }}>{SCENARIO_QUESTIONS.length}</div>
+              <div style={{ color: C.muted, fontFamily: FONT_CODE, fontSize: 9, letterSpacing: 1 }}>SCENARIOS</div>
+            </div>
+            <div>
+              <div style={{ color: C.green, fontFamily: FONT_CODE, fontSize: 20, fontWeight: "bold" }}>{RPG_MISSIONS.length}</div>
+              <div style={{ color: C.muted, fontFamily: FONT_CODE, fontSize: 9, letterSpacing: 1 }}>RPG MISSIONS</div>
+            </div>
+          </div>
+        </Panel>
+      </div>
+    </div>
+  );
 }
