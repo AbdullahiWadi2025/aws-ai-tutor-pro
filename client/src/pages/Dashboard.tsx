@@ -248,6 +248,22 @@ export default function Dashboard() {
             </p>
             <Button className="w-full bg-orange-500 hover:bg-orange-600 text-white">Enter Arena 🎮</Button>
           </Card>
+
+          <Card className="p-6 hover:shadow-lg transition-shadow cursor-pointer border-2 border-blue-200 dark:border-blue-800" onClick={() => navigate("/learn")}>
+            <div className="flex items-center gap-4 mb-4">
+              <div className="bg-blue-100 dark:bg-blue-900 p-3 rounded-lg">
+                <span className="text-2xl">📚</span>
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Learning Center</h3>
+                <span className="text-xs font-bold text-blue-500 uppercase tracking-wide">11 Categories · 50+ Services</span>
+              </div>
+            </div>
+            <p className="text-slate-600 dark:text-slate-300 mb-4 text-sm">
+              Deep-dive reference cards for every AWS service — from Cloud Foundations to ML/AI, with exam tips.
+            </p>
+            <Button className="w-full bg-blue-500 hover:bg-blue-600 text-white">Open Learning Center 📖</Button>
+          </Card>
         </div>
 
         {/* Gamification & Recommendations Section */}

@@ -1242,6 +1242,7 @@ export default function AwsGame() {
           <div style={{ textAlign: "right" }}>
             <div style={{ color: C.accent, fontFamily: FONT_CODE, fontSize: 20, fontWeight: "bold" }}>{totalScore}</div>
             <div style={{ color: C.muted, fontFamily: FONT_CODE, fontSize: 9, letterSpacing: 1 }}>SESSION XP</div>
+            <button onClick={() => navigate("/learn")} style={{ marginTop: 8, background: `${C.blue}12`, border: `1px solid ${C.blue}40`, color: C.blue, padding: "6px 12px", borderRadius: 6, cursor: "pointer", fontFamily: FONT_CODE, fontSize: 9, letterSpacing: 1 }}>📚 LEARNING CENTER</button>
           </div>
         </div>
 

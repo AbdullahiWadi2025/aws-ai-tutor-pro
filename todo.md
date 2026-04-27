@@ -331,3 +331,14 @@
 - [x] Add Learn tab: structured curriculum with concept cards, quizzes, fill-in-the-blank per topic/unit
 - [x] Update Dashboard game card copy (remove "Duolingo-style" language)
 - [x] Add JetBrains Mono + Space Mono fonts to index.html
+
+## Feature: AWS Learning Center
+- [x] Create /learn route and LearningCenter.tsx page
+- [x] Category tabs: Cloud Foundations, Compute, Storage, Databases, Networking, Security, Serverless, Analytics, ML/AI, DevOps, Cost Management
+- [x] Each category has multiple service cards with: what it is, when to use it, key features, pricing model, exam tips
+- [x] Search bar to filter services by name or keyword
+- [x] Difficulty badge per service (Beginner / Intermediate / Advanced)
+- [x] "Exam Tip" callout box on each card for SAA-C03 / CLF-C02 relevant notes
+- [x] Add Learning Center link to Dashboard quick-access cards
+- [x] Add Learning Center button to Game Hub header
+- [x] Register /learn route in App.tsx
