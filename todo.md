@@ -300,11 +300,22 @@
 - [x] Fix "Cannot update a component (Route) while rendering a different component (Home)" — moved navigate("/dashboard") into useEffect([isAuthenticated, user]) so it only fires after render, not during
 
 ## Feature: AWS Learning Game Redesign (Beginner-Friendly)
-- [ ] Rebuild AwsGame.tsx as a clean beginner learning game matching site theme (uses CSS variables, supports dark/light toggle)
-- [ ] Topic path map with 5 topics shown as a visual learning path (Cloud Basics, Compute, Storage, Security, Networking)
-- [ ] Each topic has 3-5 lessons; each lesson shows a concept card first then 4-5 questions
-- [ ] Question types: multiple choice, true/false, fill-in-the-blank (tap the missing word)
-- [ ] Hearts (3 lives), XP counter, progress bar per lesson
-- [ ] Instant green/red feedback with one-line explanation after each answer
-- [ ] Lesson complete screen with XP earned and Continue button
-- [ ] Preserve leaderboard integration (submitScore on lesson complete)
+- [x] Rebuild AwsGame.tsx as a clean beginner learning game matching site theme (uses CSS variables, supports dark/light toggle)
+- [x] Topic path map with 5 topics shown as a visual learning path (Cloud Basics, Compute, Storage, Security, Networking)
+- [x] Each topic has 3-5 lessons; each lesson shows a concept card first then 4-5 questions
+- [x] Question types: multiple choice, true/false, fill-in-the-blank (tap the missing word)
+- [x] Hearts (3 lives), XP counter, progress bar per lesson
+- [x] Instant green/red feedback with one-line explanation after each answer
+- [x] Lesson complete screen with XP earned and Continue button
+- [x] Preserve leaderboard integration (submitScore on lesson complete)
+
+## Feature: Full Mimo/Duolingo-Style AWS Game (Complete Rebuild)
+- [x] Game hub with 3 tabs: Learn (paths), Escape Room, Reference
+- [x] Learning paths: Cloud Basics → Compute → Storage → Security → Networking (locked/unlocked levels)
+- [x] Lesson types: Concept card, MCQ, True/False, Fill-in-the-blank, Matching pairs
+- [x] Hearts (3 lives), XP counter, streak tracker, progress bar per lesson
+- [x] Escape Room: 6 timed AWS incident challenges (60 seconds each)
+- [x] Reference tab: browsable cards for 15 AWS services
+- [x] Leaderboard integration (reuse existing game.submitScore / game.getLeaderboard)
+- [x] Fixed navigation bug (path-detail screen was blank)
+- [x] Fixed submitScore field name (bestStreak → streak)
