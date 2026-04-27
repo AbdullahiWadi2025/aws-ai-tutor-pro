@@ -342,3 +342,7 @@
 - [x] Add Learning Center link to Dashboard quick-access cards
 - [x] Add Learning Center button to Game Hub header
 - [x] Register /learn route in App.tsx
+
+## Bug Fix: Learning Center Difficulty Filter
+- [x] Fix difficulty filter — now shows results globally across all categories when a level is selected
+- [x] Add Learning Center and Training Arena feature cards to homepage (Home.tsx)

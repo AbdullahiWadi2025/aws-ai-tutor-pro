@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { getLoginUrl } from "@/const";
 import { useLocation } from "wouter";
 import { useEffect } from "react";
-import { BookOpen, Brain, BarChart3, Zap } from "lucide-react";
+import { BookOpen, Brain, BarChart3, Zap, Library, Gamepad2 } from "lucide-react";
 
 export default function Home() {
   const { user, isAuthenticated } = useAuth();
@@ -100,7 +100,7 @@ export default function Home() {
             <p className="text-xl text-blue-200">Everything you need to ace your AWS certification</p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {/* Exam Mode */}
             <div className="group bg-gradient-to-br from-slate-700/50 to-slate-800/50 border border-blue-400/20 rounded-xl p-6 hover:border-blue-400/50 transition-all">
               <div className="mb-4">
@@ -155,6 +155,26 @@ export default function Home() {
               <BarChart3 className="w-8 h-8 text-blue-400 mb-3" />
               <h3 className="text-xl font-bold text-white mb-2">Progress Analytics</h3>
               <p className="text-blue-200">Track performance with detailed analytics and topic breakdowns</p>
+            </div>
+
+            {/* Learning Center */}
+            <div className="group bg-gradient-to-br from-slate-700/50 to-slate-800/50 border border-amber-400/20 rounded-xl p-6 hover:border-amber-400/50 transition-all">
+              <div className="mb-4 h-40 rounded-lg bg-gradient-to-br from-amber-900/40 to-slate-800/60 flex items-center justify-center">
+                <span className="text-6xl">📚</span>
+              </div>
+              <Library className="w-8 h-8 text-amber-400 mb-3" />
+              <h3 className="text-xl font-bold text-white mb-2">Learning Center</h3>
+              <p className="text-blue-200">Deep-dive reference cards for 48 AWS services across 11 categories — from zero to certified</p>
+            </div>
+
+            {/* Training Arena */}
+            <div className="group bg-gradient-to-br from-slate-700/50 to-slate-800/50 border border-orange-400/20 rounded-xl p-6 hover:border-orange-400/50 transition-all">
+              <div className="mb-4 h-40 rounded-lg bg-gradient-to-br from-orange-900/40 to-slate-800/60 flex items-center justify-center">
+                <span className="text-6xl">☁️</span>
+              </div>
+              <Gamepad2 className="w-8 h-8 text-orange-400 mb-3" />
+              <h3 className="text-xl font-bold text-white mb-2">Training Arena</h3>
+              <p className="text-blue-200">5 game modes: Match It (31 levels), Escape Room, Troubleshoot, Scenario Quiz &amp; RPG Campaign</p>
             </div>
           </div>
         </div>

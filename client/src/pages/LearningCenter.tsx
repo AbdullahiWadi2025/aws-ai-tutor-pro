@@ -1136,6 +1136,20 @@ export default function LearningCenter() {
     });
   }, [currentCategory, search, levelFilter]);
 
+  // Global level filter across all categories
+  const globalLevelResults = useMemo(() => {
+    if (levelFilter === "All") return null;
+    const results: Array<{name:string;tagline:string;level:string;icon:string;what:string;when:string;features:string[];pricing:string;examTip:string;catColor:string;catLabel:string}> = [];
+    CATEGORIES.forEach(cat => {
+      cat.services.forEach(s => {
+        if (s.level === levelFilter) {
+          results.push({ ...s, catColor: cat.color, catLabel: cat.label });
+        }
+      });
+    });
+    return results;
+  }, [levelFilter]);
+
   // Global search across all categories
   const globalSearchResults = useMemo(() => {
     if (search.length < 2) return null;
@@ -1241,8 +1255,30 @@ export default function LearningCenter() {
           </div>
         )}
 
-        {/* Category tabs + content (only show when not searching) */}
-        {search.length < 2 && (
+        {/* Global level filter results (all categories) */}
+        {search.length < 2 && levelFilter !== "All" && globalLevelResults && (
+          <div style={{ marginBottom: 20 }}>
+            <div style={{ color: C.muted, fontFamily: FONT_CODE, fontSize: 10, letterSpacing: 1, marginBottom: 12 }}>
+              {levelFilter.toUpperCase()} SERVICES — {globalLevelResults.length} ACROSS ALL CATEGORIES
+            </div>
+            {globalLevelResults.length === 0 ? (
+              <div style={{ color: C.muted, fontFamily: "monospace", fontSize: 12, textAlign: "center", padding: "32px 0" }}>
+                No {levelFilter} services found
+              </div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {globalLevelResults.map(s => (
+                  <div key={s.name}>
+                    <div style={{ color: s.catColor, fontFamily: FONT_CODE, fontSize: 9, letterSpacing: 1, marginBottom: 4, paddingLeft: 4 }}>{s.catLabel}</div>
+                    <ServiceCard service={s} catColor={s.catColor} />
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+        {/* Category tabs + content (only show when not searching and no level filter) */}
+        {search.length < 2 && levelFilter === "All" && (
           <div style={{ display: "flex", gap: 16 }}>
             {/* Sidebar categories */}
             <div style={{ width: 180, flexShrink: 0 }}>
