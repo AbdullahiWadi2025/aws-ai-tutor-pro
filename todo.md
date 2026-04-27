@@ -298,3 +298,13 @@
 
 ## Bug Fix: setState During Render in Home.tsx
 - [x] Fix "Cannot update a component (Route) while rendering a different component (Home)" — moved navigate("/dashboard") into useEffect([isAuthenticated, user]) so it only fires after render, not during
+
+## Feature: AWS Learning Game Redesign (Beginner-Friendly)
+- [ ] Rebuild AwsGame.tsx as a clean beginner learning game matching site theme (uses CSS variables, supports dark/light toggle)
+- [ ] Topic path map with 5 topics shown as a visual learning path (Cloud Basics, Compute, Storage, Security, Networking)
+- [ ] Each topic has 3-5 lessons; each lesson shows a concept card first then 4-5 questions
+- [ ] Question types: multiple choice, true/false, fill-in-the-blank (tap the missing word)
+- [ ] Hearts (3 lives), XP counter, progress bar per lesson
+- [ ] Instant green/red feedback with one-line explanation after each answer
+- [ ] Lesson complete screen with XP earned and Continue button
+- [ ] Preserve leaderboard integration (submitScore on lesson complete)
