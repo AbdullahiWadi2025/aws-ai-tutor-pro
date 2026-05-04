@@ -5,7 +5,7 @@ import { getDb } from "./db";
 import { studyPlans, topicPerformance } from "../drizzle/schema";
 import { eq, and, desc } from "drizzle-orm";
 
-// Certification metadata for the AI prompt
+// Certification metadata
 const CERT_META: Record<string, {
   fullName: string;
   passingScore: number;
@@ -144,6 +144,99 @@ const CERT_META: Record<string, {
   },
 };
 
+// Day-of-week names
+const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+// Expand a week plan into individual days programmatically
+// Shorten a topic string by removing parenthetical details
+function shortTopic(topic: string): string {
+  return topic.replace(/\s*\(.*?\)/g, "").trim();
+}
+
+function expandWeekToDays(
+  weekNumber: number,
+  weekTheme: string,
+  weekTopics: string[],
+  startDate: Date,
+  daysInWeek: number,
+  hoursPerDay: number,
+  isLastWeek: boolean
+): Array<{
+  day: number;
+  date: string;
+  dayName: string;
+  topic: string;
+  subtopics: string[];
+  tasks: string[];
+  practiceQuestions: number;
+  estimatedHours: number;
+  priority: "high" | "medium" | "review";
+}> {
+  const days = [];
+  const topicCount = weekTopics.length;
+
+  for (let i = 0; i < daysInWeek; i++) {
+    const d = new Date(startDate);
+    d.setDate(d.getDate() + i);
+    const dateStr = d.toISOString().split("T")[0];
+    const dayName = DAY_NAMES[d.getDay()];
+
+    // Last day of each week = review day
+    const isReviewDay = i === daysInWeek - 1;
+    // Last week = all review
+    const priority: "high" | "medium" | "review" = isLastWeek || isReviewDay
+      ? "review"
+      : i < Math.ceil(daysInWeek * 0.5)
+      ? "high"
+      : "medium";
+
+    const topicIndex = isReviewDay ? -1 : i % Math.max(1, topicCount);
+    const topic = isReviewDay
+      ? "Weekly Review & Practice"
+      : weekTopics[topicIndex] || weekTopics[0];
+
+    const practiceQuestions = isReviewDay
+      ? Math.round(hoursPerDay * 8)
+      : Math.round(hoursPerDay * 5);
+
+    const st = shortTopic(topic);
+    const subtopics = isReviewDay
+      ? ["Review all week topics", "Identify gaps", "Take practice quiz"]
+      : [
+          `${st} — core concepts`,
+          `${st} — hands-on practice`,
+          `${st} — exam scenarios`,
+        ];
+
+    const tasks = isReviewDay
+      ? [
+          "Re-read notes from the week (1 hour)",
+          `Take a ${practiceQuestions}-question practice quiz`,
+          "Flag weak areas for next week",
+        ]
+      : [
+          `Study ${st} in AWS documentation (${Math.ceil(hoursPerDay * 0.5)} hour)`,
+          `Watch ${st} video course modules`,
+          `Complete ${practiceQuestions} practice questions on ${st}`,
+          hoursPerDay >= 2 ? `Build a hands-on lab for ${st}` : `Review ${st} exam tips`,
+        ];
+
+    days.push({
+      day: (weekNumber - 1) * 7 + i + 1,
+      date: dateStr,
+      dayName,
+      topic,
+      subtopics,
+      tasks,
+      practiceQuestions,
+      estimatedHours: hoursPerDay,
+      priority,
+    });
+  }
+
+  return days;
+}
+
 export const studyPlanRouter = router({
   generate: protectedProcedure
     .input(z.object({
@@ -157,16 +250,19 @@ export const studyPlanRouter = router({
       const certMeta = CERT_META[input.certification];
       if (!certMeta) throw new Error("Unknown certification");
 
-      // Calculate days until exam
+      // Calculate days until exam (cap at 56 days = 8 weeks)
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       const examDay = new Date(input.examDate);
       examDay.setHours(0, 0, 0, 0);
-      const daysUntilExam = Math.max(1, Math.min(90, Math.ceil((examDay.getTime() - today.getTime()) / 86400000)));
+      const rawDays = Math.ceil((examDay.getTime() - today.getTime()) / 86400000);
+      const daysUntilExam = Math.max(7, Math.min(56, rawDays));
+      const numWeeks = Math.ceil(daysUntilExam / 7);
 
       // Pull weak topics from topicPerformance table
       const db = await getDb();
       if (!db) throw new Error("Database unavailable");
+
       const topicRows = await db
         .select()
         .from(topicPerformance)
@@ -191,69 +287,47 @@ export const studyPlanRouter = router({
 
       const hasPerformanceData = topicRows.length > 0;
 
-      const weakAreasLine = hasPerformanceData
-        ? "- Weak areas (from practice data): " + (weakTopics.length > 0
-            ? weakTopics.map((t) => t.topic + " (" + t.accuracy.toFixed(0) + "% accuracy)").join(", ")
-            : "none identified yet")
-        : "- No practice data yet — distribute topics evenly";
+      // Build a compact prompt — ask for week-level plan only (not day-by-day)
+      const weakLine = hasPerformanceData && weakTopics.length > 0
+        ? weakTopics.map((t) => t.topic).join(", ")
+        : "none identified";
+      const strongLine = strongTopics.length > 0
+        ? strongTopics.map((t) => t.topic).join(", ")
+        : "none identified";
 
-      const strongAreasLine = strongTopics.length > 0
-        ? "- Strong areas: " + strongTopics.map((t) => t.topic + " (" + t.accuracy.toFixed(0) + "%)").join(", ")
-        : "";
+      const systemPrompt = "You are an AWS certification coach. Return ONLY valid JSON, no markdown, no extra text.";
 
-      const systemPrompt = "You are an expert AWS certification coach. Generate a detailed, personalized study plan in JSON format. Return ONLY valid JSON, no markdown, no explanation.";
+      const userPrompt = `Generate a ${numWeeks}-week AWS study plan. Return this exact JSON structure (no extra fields):
+{
+  "readinessScore": <integer 0-100>,
+  "weakAreas": [<up to 6 topic strings>],
+  "strengths": [<up to 4 topic strings>],
+  "examDayTips": [<exactly 5 short tip strings>],
+  "resources": [
+    {"title": "<name>", "url": "<URL>", "type": "<Documentation|Course|Practice|Whitepaper>"}
+  ],
+  "weeks": [
+    {
+      "weekNumber": 1,
+      "theme": "<short theme string>",
+      "topics": [<array of 3-5 topic strings to cover this week>],
+      "totalHours": <number>,
+      "totalQuestions": <integer>
+    }
+  ]
+}
 
-      const userPrompt = [
-        "Generate a complete AWS study plan with this exact JSON structure:",
-        '{',
-        '  "readinessScore": <0-100 integer>,',
-        '  "weakAreas": [<array of topic strings>],',
-        '  "strengths": [<array of topic strings>],',
-        '  "examDayTips": [<array of 4-5 practical tip strings>],',
-        '  "resources": [',
-        '    {"title": "<resource name>", "url": "<URL>", "type": "<Documentation|Whitepaper|Course|Practice>"}',
-        '  ],',
-        '  "weeks": [',
-        '    {',
-        '      "weekNumber": 1,',
-        '      "theme": "<week theme string>",',
-        '      "days": [',
-        '        {',
-        '          "day": 1,',
-        '          "date": "<YYYY-MM-DD>",',
-        '          "topic": "<specific topic>",',
-        '          "subtopics": [<array of 2-3 subtopic strings>],',
-        '          "tasks": [<array of 2-4 concrete actionable task strings>],',
-        '          "practiceQuestions": <integer 5-20>,',
-        '          "estimatedHours": <number>,',
-        '          "priority": "<high|medium|review>"',
-        '        }',
-        '      ]',
-        '    }',
-        '  ]',
-        '}',
-        '',
-        "Input parameters:",
-        "- Certification: " + certMeta.fullName + " (" + input.certification + ")",
-        "- Passing score: " + certMeta.passingScore + "/1000",
-        "- Exam duration: " + certMeta.duration + " minutes, " + certMeta.questionCount + " questions",
-        "- Days until exam: " + daysUntilExam + " days",
-        "- Daily study budget: " + input.hoursPerDay + " hours/day",
-        "- Knowledge level: " + input.knowledgeLevel,
-        "- Official topics: " + certMeta.topics.join(", "),
-        weakAreasLine,
-        strongAreasLine,
-        "",
-        "Rules:",
-        "1. Cap the plan at " + daysUntilExam + " days total (max 90)",
-        "2. Prioritize weak areas — schedule them in the first 60% of the plan",
-        "3. Last 20% of days should be review and practice exams",
-        "4. estimatedHours per day must not exceed " + input.hoursPerDay,
-        "5. practiceQuestions should scale with hoursPerDay (more hours = more questions)",
-        "6. Start dates from today: " + today.toISOString().split("T")[0],
-        "7. readinessScore should reflect: knowledge level (beginner=30, intermediate=55, advanced=75) adjusted by time available and weak areas",
-        "8. Return ONLY the JSON object, nothing else",
-      ].join("\n");
+Parameters:
+- Cert: ${certMeta.fullName} (${input.certification})
+- Weeks: ${numWeeks}
+- Hours/day: ${input.hoursPerDay}
+- Level: ${input.knowledgeLevel}
+- Topics: ${certMeta.topics.join(", ")}
+- Weak areas: ${weakLine}
+- Strong areas: ${strongLine}
+- readinessScore: beginner=25-40, intermediate=45-65, advanced=70-85 (adjust for weak areas)
+- Last week must be "Final Review & Practice Exams" theme
+- resources: include 4-6 real AWS study resources with real URLs`;
 
       const response = await invokeLLM({
         messages: [
@@ -264,20 +338,74 @@ export const studyPlanRouter = router({
       });
 
       const content = response.choices[0].message.content as string;
-      let planData: any;
+      let llmData: any;
       try {
-        planData = JSON.parse(content);
+        llmData = JSON.parse(content);
       } catch {
         const jsonMatch = content.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
-          planData = JSON.parse(jsonMatch[0]);
+          llmData = JSON.parse(jsonMatch[0]);
         } else {
           throw new Error("Failed to parse AI response");
         }
       }
 
-      // Save to database (db is guaranteed non-null from the check above)
-      await db!.insert(studyPlans).values({
+      // Expand week-level plan into day-by-day programmatically
+      const expandedWeeks: any[] = [];
+      let dayCounter = 0;
+
+      for (let w = 0; w < (llmData.weeks || []).length; w++) {
+        const week = llmData.weeks[w];
+        const weekStartDate = new Date(today);
+        weekStartDate.setDate(today.getDate() + dayCounter);
+
+        const remainingDays = daysUntilExam - dayCounter;
+        const daysInWeek = Math.min(7, remainingDays);
+        if (daysInWeek <= 0) break;
+
+        const isLastWeek = w === (llmData.weeks.length - 1);
+        const expandedDays = expandWeekToDays(
+          week.weekNumber || w + 1,
+          week.theme || `Week ${w + 1}`,
+          week.topics || certMeta.topics.slice(0, 4),
+          weekStartDate,
+          daysInWeek,
+          input.hoursPerDay,
+          isLastWeek
+        );
+
+        expandedWeeks.push({
+          weekNumber: week.weekNumber || w + 1,
+          theme: week.theme || `Week ${w + 1}`,
+          totalHours: week.totalHours || daysInWeek * input.hoursPerDay,
+          totalQuestions: week.totalQuestions || daysInWeek * Math.round(input.hoursPerDay * 5),
+          days: expandedDays,
+        });
+
+        dayCounter += daysInWeek;
+      }
+
+      const planData = {
+        readinessScore: llmData.readinessScore ?? 50,
+        weakAreas: llmData.weakAreas ?? weakTopics.map((t) => t.topic),
+        strengths: llmData.strengths ?? strongTopics.map((t) => t.topic),
+        examDayTips: llmData.examDayTips ?? [
+          "Arrive 30 minutes early to the testing center",
+          "Flag difficult questions and return to them",
+          "Read each question twice before answering",
+          "Eliminate obviously wrong answers first",
+          "Trust your preparation — you are ready",
+        ],
+        resources: llmData.resources ?? [
+          { title: "AWS Documentation", url: "https://docs.aws.amazon.com", type: "Documentation" },
+          { title: "AWS Skill Builder", url: "https://skillbuilder.aws", type: "Course" },
+          { title: "AWS Whitepapers", url: "https://aws.amazon.com/whitepapers", type: "Whitepaper" },
+        ],
+        weeks: expandedWeeks,
+      };
+
+      // Save to database
+      await db.insert(studyPlans).values({
         userId,
         certification: input.certification,
         examDate: input.examDate,
