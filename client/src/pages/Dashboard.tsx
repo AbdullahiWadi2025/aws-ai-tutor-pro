@@ -264,6 +264,22 @@ export default function Dashboard() {
             </p>
             <Button className="w-full bg-blue-500 hover:bg-blue-600 text-white">Open Learning Center 📖</Button>
           </Card>
+
+          <Card className="p-6 hover:shadow-lg transition-shadow cursor-pointer border-2 border-purple-200 dark:border-purple-800" onClick={() => navigate("/study-plan")}>
+            <div className="flex items-center gap-4 mb-4">
+              <div className="bg-purple-100 dark:bg-purple-900 p-3 rounded-lg">
+                <span className="text-2xl">🗓️</span>
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-slate-900 dark:text-white">AI Study Plan</h3>
+                <span className="text-xs font-bold text-purple-500 uppercase tracking-wide">Personalized · Day-by-Day</span>
+              </div>
+            </div>
+            <p className="text-slate-600 dark:text-slate-300 mb-4 text-sm">
+              Get a custom study schedule built around your exam date, daily availability, and weak topics.
+            </p>
+            <Button className="w-full bg-purple-500 hover:bg-purple-600 text-white">Generate My Plan 🗓️</Button>
+          </Card>
         </div>
 
         {/* Gamification & Recommendations Section */}

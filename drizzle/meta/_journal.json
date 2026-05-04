@@ -50,6 +50,13 @@
       "when": 1777241663775,
       "tag": "0006_new_electro",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "5",
+      "when": 1777874604211,
+      "tag": "0007_simple_chimera",
+      "breakpoints": true
     }
   ]
 }

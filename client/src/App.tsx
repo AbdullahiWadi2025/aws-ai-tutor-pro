@@ -18,6 +18,7 @@ import SubscriptionManagement from "./pages/SubscriptionManagement";
 import BetaAdmin from "./pages/BetaAdmin";
 import AwsGame from "./pages/AwsGame";
 import LearningCenter from "./pages/LearningCenter";
+import StudyPlan from "./pages/StudyPlan";
 import { useAuth } from "./_core/hooks/useAuth";
 import { Loader2 } from "lucide-react";
 import { FeedbackWidget } from "./components/FeedbackWidget";
@@ -54,6 +55,7 @@ function Router() {
           <Route path="/admin/beta" component={BetaAdmin} />
           <Route path="/game" component={AwsGame} />
           <Route path="/learn" component={LearningCenter} />
+          <Route path="/study-plan" component={StudyPlan} />
         </>
       )}
       <Route path="/404" component={NotFound} />

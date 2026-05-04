@@ -281,3 +281,19 @@ export const gameScores = mysqlTable("game_scores", {
 
 export type GameScore = typeof gameScores.$inferSelect;
 export type InsertGameScore = typeof gameScores.$inferInsert;
+
+// AI Study Plans Table
+export const studyPlans = mysqlTable("study_plans", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("user_id").notNull(),
+  certification: varchar("certification", { length: 32 }).notNull(),
+  examDate: varchar("exam_date", { length: 16 }).notNull(), // ISO date string YYYY-MM-DD
+  hoursPerDay: decimal("hours_per_day", { precision: 3, scale: 1 }).notNull(),
+  knowledgeLevel: mysqlEnum("knowledge_level", ["beginner", "intermediate", "advanced"]).notNull(),
+  readinessScore: int("readiness_score"),
+  planJson: json("plan_json").$type<object>().notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type StudyPlan = typeof studyPlans.$inferSelect;
+export type InsertStudyPlan = typeof studyPlans.$inferInsert;

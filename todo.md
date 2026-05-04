@@ -346,3 +346,16 @@
 ## Bug Fix: Learning Center Difficulty Filter
 - [x] Fix difficulty filter — now shows results globally across all categories when a level is selected
 - [x] Add Learning Center and Training Arena feature cards to homepage (Home.tsx)
+
+## Feature: AI Study Plan Generator
+- [x] Add study_plans table to drizzle schema (id, userId, certification, examDate, hoursPerDay, knowledgeLevel, planJson, readinessScore, createdAt)
+- [x] Add tRPC procedure: studyPlan.generate — pulls user weak topics from exam history, calls LLM, returns structured plan
+- [x] Add tRPC procedure: studyPlan.getMine — returns user's saved study plans
+- [x] Build /study-plan page with 4-step form (cert picker, exam date, hours/day slider, knowledge level)
+- [x] Build results display: readiness score card, weak areas + strengths side by side, week-by-week accordion with color-coded days
+- [x] Color code days: red border = high priority, amber = medium, blue = review
+- [x] Resources and exam tips tabs at bottom
+- [x] CTA at bottom linking to Practice Mode
+- [x] Add Study Plan link to Dashboard quick-access cards
+- [x] Add Study Plan link to sidebar navigation (via Dashboard card)
+- [x] Register /study-plan route in App.tsx
