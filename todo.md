@@ -371,3 +371,11 @@
 - [x] Make saved plan cards clickable to reload the full plan into view
 - [x] Fix saved plan cards showing 0 weeks · 0 days (planJson stored as top-level StudyPlanData, not wrapped in GenerateResult)
 - [x] Normalize old-format planJson to GenerateResult shape when loading saved plans
+
+## Feature: Interactive Study Plan Preview on Homepage
+- [x] Add publicProcedure studyPlan.generateDemo to server — same LLM logic but no auth required, no DB save
+- [x] Add interactive section to Home.tsx: cert picker, exam date, hours/day slider, knowledge level buttons
+- [x] Show demo plan result inline: readiness score gauge, week-by-week accordion (first 2 weeks expanded), weak areas
+- [x] Show sign-up CTA modal/banner after plan is generated: "Sign up free to save this plan and track your progress"
+- [x] Gate the full plan view behind sign-up (blur weeks 3+ with overlay)
+- [x] Test full flow: fill form → see demo plan → click sign up → redirected to login

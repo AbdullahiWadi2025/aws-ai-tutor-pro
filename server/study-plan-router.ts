@@ -1,4 +1,4 @@
-import { protectedProcedure, router } from "./_core/trpc";
+import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { z } from "zod";
 import { invokeLLM } from "./_core/llm";
 import { getDb } from "./db";
@@ -441,4 +441,125 @@ Parameters:
       .limit(5);
     return plans;
   }),
+
+  // Public demo — no auth, no DB save. Used on the homepage for visitors.
+  generateDemo: publicProcedure
+    .input(z.object({
+      certification: z.string(),
+      examDate: z.string(),
+      hoursPerDay: z.number().min(0.5).max(8),
+      knowledgeLevel: z.enum(["beginner", "intermediate", "advanced"]),
+    }))
+    .mutation(async ({ input }) => {
+      const certMeta = CERT_META[input.certification];
+      if (!certMeta) throw new Error("Unknown certification");
+
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const examDay = new Date(input.examDate);
+      examDay.setHours(0, 0, 0, 0);
+      const rawDays = Math.ceil((examDay.getTime() - today.getTime()) / 86400000);
+      const daysUntilExam = Math.max(7, Math.min(56, rawDays));
+      const numWeeks = Math.ceil(daysUntilExam / 7);
+
+      const systemPrompt = "You are an AWS certification coach. Return ONLY valid JSON, no markdown, no extra text.";
+      const userPrompt = `Generate a ${numWeeks}-week AWS study plan. Return this exact JSON structure (no extra fields):
+{
+  "readinessScore": <integer 0-100>,
+  "weakAreas": [<up to 6 topic strings>],
+  "strengths": [<up to 4 topic strings>],
+  "examDayTips": [<exactly 5 short tip strings>],
+  "resources": [
+    {"title": "<name>", "url": "<URL>", "type": "<Documentation|Course|Practice|Whitepaper>"}
+  ],
+  "weeks": [
+    {
+      "weekNumber": 1,
+      "theme": "<short theme string>",
+      "topics": [<array of 3-5 topic strings to cover this week>],
+      "totalHours": <number>,
+      "totalQuestions": <integer>
+    }
+  ]
+}
+
+Parameters:
+- Cert: ${certMeta.fullName} (${input.certification})
+- Weeks: ${numWeeks}
+- Hours/day: ${input.hoursPerDay}
+- Level: ${input.knowledgeLevel}
+- Topics: ${certMeta.topics.join(", ")}
+- Weak areas: none identified (new user)
+- Strong areas: none identified (new user)
+- readinessScore: beginner=25-40, intermediate=45-65, advanced=70-85
+- Last week must be "Final Review & Practice Exams" theme
+- resources: include 4-6 real AWS study resources with real URLs`;
+
+      const response = await invokeLLM({
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
+        ],
+        response_format: { type: "json_object" } as any,
+      });
+
+      const content = response.choices[0].message.content as string;
+      let llmData: any;
+      try {
+        llmData = JSON.parse(content);
+      } catch {
+        const jsonMatch = content.match(/\{[\s\S]*\}/);
+        if (jsonMatch) llmData = JSON.parse(jsonMatch[0]);
+        else throw new Error("Failed to parse AI response");
+      }
+
+      // Expand week-level plan into day-by-day
+      const expandedWeeks: any[] = [];
+      let dayCounter = 0;
+      for (let w = 0; w < (llmData.weeks || []).length; w++) {
+        const week = llmData.weeks[w];
+        const weekStartDate = new Date(today);
+        weekStartDate.setDate(today.getDate() + dayCounter);
+        const remainingDays = daysUntilExam - dayCounter;
+        const daysInWeek = Math.min(7, remainingDays);
+        if (daysInWeek <= 0) break;
+        const isLastWeek = w === (llmData.weeks.length - 1);
+        const expandedDays = expandWeekToDays(
+          week.weekNumber || w + 1,
+          week.theme || `Week ${w + 1}`,
+          week.topics || certMeta.topics.slice(0, 4),
+          weekStartDate,
+          daysInWeek,
+          input.hoursPerDay,
+          isLastWeek
+        );
+        expandedWeeks.push({
+          weekNumber: week.weekNumber || w + 1,
+          theme: week.theme || `Week ${w + 1}`,
+          totalHours: week.totalHours || daysInWeek * input.hoursPerDay,
+          totalQuestions: week.totalQuestions || daysInWeek * Math.round(input.hoursPerDay * 5),
+          days: expandedDays,
+        });
+        dayCounter += daysInWeek;
+      }
+
+      return {
+        success: true,
+        plan: {
+          readinessScore: llmData.readinessScore ?? 50,
+          weakAreas: llmData.weakAreas ?? [],
+          strengths: llmData.strengths ?? [],
+          examDayTips: llmData.examDayTips ?? [],
+          resources: llmData.resources ?? [],
+          weeks: expandedWeeks,
+        },
+        daysUntilExam,
+        certMeta: {
+          fullName: certMeta.fullName,
+          passingScore: certMeta.passingScore,
+          questionCount: certMeta.questionCount,
+          duration: certMeta.duration,
+        },
+      };
+    }),
 });
