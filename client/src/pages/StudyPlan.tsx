@@ -207,17 +207,36 @@ function SavedPlanCard({
   plan: { id: number; certification: string; examDate: string; readinessScore: number | null; createdAt: number; planJson: string };
   onLoad: (data: GenerateResult) => void;
 }) {
+  // planJson can be stored in two formats:
+  // Old format (direct StudyPlanData): { weeks: [...], readinessScore, resources, ... }
+  // New format (GenerateResult wrapper): { plan: { weeks: [...], readinessScore, ... }, ... }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const parsed = (() => {
-    try { return JSON.parse(plan.planJson) as GenerateResult; } catch { return null; }
+    try {
+      const raw: any = typeof plan.planJson === "string" ? JSON.parse(plan.planJson) : plan.planJson;
+      return raw as any;
+    } catch { return null; }
   })();
 
-  const score = plan.readinessScore ?? parsed?.plan?.readinessScore ?? 0;
+  const weeksArr: StudyWeek[] = parsed?.weeks ?? parsed?.plan?.weeks ?? [];
+  const score: number = plan.readinessScore ?? parsed?.readinessScore ?? parsed?.plan?.readinessScore ?? 0;
   const color = score >= 70 ? "text-green-400" : score >= 50 ? "text-amber-400" : "text-red-400";
-  const weeks = parsed?.plan?.weeks?.length ?? 0;
-  const days = parsed?.plan?.weeks?.reduce((s: number, w: StudyWeek) => s + w.days.length, 0) ?? 0;
+  const weeks = weeksArr.length;
+  const days = weeksArr.reduce((s: number, w: StudyWeek) => s + (w.days?.length ?? 0), 0);
+
+  // Normalize to GenerateResult shape for onLoad
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const parsedAsResult: GenerateResult | null = parsed
+    ? (parsed.plan ? (parsed as GenerateResult) : ({ success: true, plan: parsed, weakTopics: [], strongTopics: [], daysUntilExam: 0, certMeta: { fullName: "", passingScore: 0, questionCount: 0, duration: 0 } } as GenerateResult))
+    : null;
 
   return (
-    <div className="bg-white/5 border border-white/10 rounded-xl p-4 hover:border-amber-500/30 transition-colors">
+    <div
+      onClick={() => parsedAsResult && onLoad(parsedAsResult)}
+      className={`bg-white/5 border border-white/10 rounded-xl p-4 transition-all ${
+        parsed ? "cursor-pointer hover:border-amber-500/50 hover:bg-white/8 hover:shadow-lg hover:shadow-amber-500/5" : "opacity-60"
+      }`}
+    >
       <div className="flex items-start justify-between gap-3 mb-3">
         <div>
           <div className="text-white font-bold font-mono">{plan.certification}</div>
@@ -238,15 +257,14 @@ function SavedPlanCard({
         <span>·</span>
         <span>{days} days</span>
       </div>
-      {parsed && (
-        <Button
-          onClick={() => onLoad(parsed)}
-          size="sm"
-          className="w-full bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 border border-amber-500/30 font-mono text-xs"
-          variant="outline"
-        >
-          LOAD THIS PLAN →
-        </Button>
+      {parsed ? (
+        <div className="text-xs text-amber-400/70 font-mono text-center border-t border-white/5 pt-3 group-hover:text-amber-400">
+          CLICK TO LOAD THIS PLAN →
+        </div>
+      ) : (
+        <div className="text-xs text-slate-500 font-mono text-center border-t border-white/5 pt-3">
+          Plan data unavailable
+        </div>
       )}
     </div>
   );
@@ -267,14 +285,15 @@ export default function StudyPlan() {
   const [result, setResult] = useState<GenerateResult | null>(null);
   const [activeTab, setActiveTab] = useState<"plan" | "resources" | "tips">("plan");
   const [mainView, setMainView] = useState<"form" | "result" | "saved">("form");
-
+  const [planSaved, setPlanSaved] = useState(false);
   const generateMutation = trpc.studyPlan.generate.useMutation({
     onSuccess: (data) => {
       setResult(data as GenerateResult);
       setMainView("result");
       setActiveTab("plan");
+      setPlanSaved(true); // auto-saved on generation
     },
-  });
+  });;
 
   const savedPlansQuery = trpc.studyPlan.getMine.useQuery(undefined, {
     enabled: !!user,
@@ -358,7 +377,8 @@ export default function StudyPlan() {
                   : "text-slate-400 border-white/10 hover:border-amber-500/30 hover:text-amber-400"
               }`}
             >
-              📋 MY PLANS {savedPlansQuery.data && savedPlansQuery.data.length > 0 && `(${savedPlansQuery.data.length})`}
+              📋 MY PLANS
+              {savedPlansQuery.isLoading ? " (…)" : savedPlansQuery.data && savedPlansQuery.data.length > 0 ? ` (${savedPlansQuery.data.length})` : ""}
             </button>
           </div>
         </div>
@@ -684,7 +704,7 @@ export default function StudyPlan() {
             )}
 
             {/* Action buttons */}
-            <div className="flex flex-wrap gap-3 pt-4 border-t border-white/10">
+            <div className="flex flex-wrap items-center gap-3 pt-4 border-t border-white/10">
               <Button
                 onClick={() => setMainView("form")}
                 variant="outline"
@@ -693,7 +713,7 @@ export default function StudyPlan() {
                 + GENERATE NEW PLAN
               </Button>
               <Button
-                onClick={() => setMainView("saved")}
+                onClick={() => { setMainView("saved"); }}
                 variant="outline"
                 className="border-white/20 text-slate-300 hover:text-white hover:bg-white/10 font-mono text-xs"
               >
@@ -705,6 +725,12 @@ export default function StudyPlan() {
               >
                 START PRACTICING →
               </Button>
+              {planSaved && (
+                <span className="flex items-center gap-1.5 text-xs text-green-400 font-mono ml-auto">
+                  <span className="w-2 h-2 rounded-full bg-green-400 inline-block"></span>
+                  PLAN SAVED
+                </span>
+              )}
             </div>
           </div>
         )}

@@ -365,3 +365,9 @@
 - [x] Improve overall UX design of the Study Plan page (better spacing, card layout, visual hierarchy)
 - [x] Add "My Saved Plans" tab on the study plan page showing previously generated plans
 - [x] Add ability to reload/view a saved plan
+
+## Bug Fix: Study Plan Page Issues
+- [x] Fix MY PLANS count showing hardcoded 5 instead of real count from DB
+- [x] Make saved plan cards clickable to reload the full plan into view
+- [x] Fix saved plan cards showing 0 weeks · 0 days (planJson stored as top-level StudyPlanData, not wrapped in GenerateResult)
+- [x] Normalize old-format planJson to GenerateResult shape when loading saved plans
