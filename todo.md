@@ -359,3 +359,9 @@
 - [x] Add Study Plan link to Dashboard quick-access cards
 - [x] Add Study Plan link to sidebar navigation (via Dashboard card)
 - [x] Register /study-plan route in App.tsx
+
+## Study Plan UX Improvements
+- [x] Fix overlapping resource links in the Resources tab
+- [x] Improve overall UX design of the Study Plan page (better spacing, card layout, visual hierarchy)
+- [x] Add "My Saved Plans" tab on the study plan page showing previously generated plans
+- [x] Add ability to reload/view a saved plan
