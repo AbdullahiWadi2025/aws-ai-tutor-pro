@@ -453,7 +453,7 @@ export default function Home() {
 
   useEffect(() => {
     if (isAuthenticated && user) {
-      navigate("/dashboard");
+      navigate("/dashboard", { replace: true });
     }
   }, [isAuthenticated, user]);
 

@@ -112,8 +112,8 @@ function DashboardLayoutContent({
   const handleLogout = async () => {
     // Navigate to home FIRST so the router doesn't hit a 404
     // when protected routes disappear after auth state clears
-    window.location.href = "/";
     await logout();
+    window.location.replace("/");
   };
   const { state, toggleSidebar } = useSidebar();
   const isCollapsed = state === "collapsed";

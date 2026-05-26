@@ -18,8 +18,8 @@ export default function Dashboard() {
 
   const handleLogout = async () => {
     // Navigate first to avoid the 404 flash when protected routes disappear
-    window.location.href = "/";
     await logout();
+    window.location.replace("/");
   };
 
   // Calculate stats
