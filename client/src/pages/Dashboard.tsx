@@ -1,12 +1,14 @@
+import { useState } from "react";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useLocation } from "wouter";
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
-import { BookOpen, Zap, Brain, BarChart3, LogOut, Settings } from "lucide-react";
+import { BookOpen, Zap, Brain, BarChart3, LogOut, Settings, MessageSquarePlus } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { StudyRecommendations } from "@/components/StudyRecommendations";
 import { AchievementsCard } from "@/components/AchievementsCard";
+import { TestimonialSubmitModal } from "@/components/TestimonialSubmitModal";
 
 export default function Dashboard() {
   const { user, logout } = useAuth();
@@ -33,6 +35,8 @@ export default function Dashboard() {
     score: parseFloat(exam.score as any) || 0,
     passed: exam.isPassed ? 1 : 0,
   })) || [];
+
+  const [showTestimonialModal, setShowTestimonialModal] = useState(false);
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
@@ -282,6 +286,30 @@ export default function Dashboard() {
             <Button className="w-full bg-purple-500 hover:bg-purple-600 text-white">Generate My Plan 🗓️</Button>
           </Card>
         </div>
+
+        {/* Share Your Story CTA */}
+        <div className="mb-6">
+          <Card
+            className="p-5 border-2 border-dashed border-yellow-300 dark:border-yellow-700 bg-yellow-50/50 dark:bg-yellow-900/10 hover:shadow-md transition-shadow cursor-pointer"
+            onClick={() => setShowTestimonialModal(true)}
+          >
+            <div className="flex items-center gap-4">
+              <div className="bg-yellow-100 dark:bg-yellow-900/40 p-3 rounded-lg shrink-0">
+                <MessageSquarePlus className="w-6 h-6 text-yellow-600 dark:text-yellow-400" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="font-semibold text-slate-900 dark:text-white">Passed your exam? Share your story! 🎉</h3>
+                <p className="text-sm text-slate-500 dark:text-slate-400">Help other students by sharing your experience — your testimonial will appear on the homepage.</p>
+              </div>
+              <Button variant="outline" className="shrink-0 border-yellow-400 text-yellow-700 dark:text-yellow-400 hover:bg-yellow-100 dark:hover:bg-yellow-900/30">
+                Share Now
+              </Button>
+            </div>
+          </Card>
+        </div>
+
+        {/* Testimonial Modal */}
+        <TestimonialSubmitModal open={showTestimonialModal} onClose={() => setShowTestimonialModal(false)} />
 
         {/* Gamification & Recommendations Section */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
