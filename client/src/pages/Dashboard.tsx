@@ -15,8 +15,9 @@ export default function Dashboard() {
   const { data: examHistory } = trpc.progress.getExamHistory.useQuery({});
 
   const handleLogout = async () => {
+    // Navigate first to avoid the 404 flash when protected routes disappear
+    window.location.href = "/";
     await logout();
-    navigate("/");
   };
 
   // Calculate stats
