@@ -592,6 +592,37 @@ export default function Home() {
         </div>
       </section>
 
+      {/* Testimonials Section */}
+      <section className="py-20 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-4xl mx-auto">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-bold text-white mb-3">Real Results from Real Students</h2>
+            <p className="text-blue-300">Hear from those who passed their AWS certification using this platform</p>
+          </div>
+          <div className="bg-gradient-to-br from-blue-900/40 to-slate-800/60 border border-blue-500/30 rounded-2xl p-8 relative">
+            {/* Quote mark */}
+            <div className="absolute -top-4 left-8 w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold text-lg">&ldquo;</div>
+            <p className="text-lg text-slate-200 leading-relaxed mb-6 italic">
+              &ldquo;Shoutout to AWS AI Tutor Pro! I recently used the app to prepare for the AWS Certified Cloud Practitioner exam and passed. The platform provides the perfect momentum and clarity needed to tackle the material efficiently. A fantastic resource for anyone getting certified.&rdquo;
+            </p>
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg shrink-0">
+                M
+              </div>
+              <div>
+                <p className="font-semibold text-white">Micaiah Hill-Shuva</p>
+                <p className="text-sm text-blue-300">AWS Certified Cloud Practitioner (CLF-C02) &mdash; Passed ✓</p>
+              </div>
+              <div className="ml-auto flex gap-1">
+                {[1,2,3,4,5].map(i => (
+                  <span key={i} className="text-yellow-400 text-lg">★</span>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* CTA Section */}
       <section className="py-20 px-4 sm:px-6 lg:px-8">
         <div className="max-w-4xl mx-auto text-center">
