@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -23,10 +23,9 @@ import {
 } from "@/components/ui/table";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
-import { Copy, Gift, MessageSquare, Plus, Star } from "lucide-react";
+import { Copy, Gift, MessageSquare, Plus, Star, CheckCircle, XCircle, Clock, Trash2 } from "lucide-react";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useLocation } from "wouter";
-import { useEffect } from "react";
 
 const CATEGORY_COLORS: Record<string, string> = {
   bug: "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-200",
@@ -75,6 +74,10 @@ export default function BetaAdmin() {
             <MessageSquare className="w-4 h-4" />
             Feedback
           </TabsTrigger>
+          <TabsTrigger value="testimonials" className="gap-2">
+            <Star className="w-4 h-4" />
+            Testimonials
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="codes" className="space-y-6 mt-4">
@@ -84,6 +87,10 @@ export default function BetaAdmin() {
 
         <TabsContent value="feedback" className="space-y-6 mt-4">
           <FeedbackListCard />
+        </TabsContent>
+
+        <TabsContent value="testimonials" className="space-y-6 mt-4">
+          <TestimonialsCard />
         </TabsContent>
       </Tabs>
     </div>
@@ -361,6 +368,136 @@ function FeedbackListCard() {
                   </div>
                 </CardContent>
               </Card>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function TestimonialsCard() {
+  const utils = trpc.useUtils();
+  const { data: testimonials, isLoading } = trpc.testimonial.listAll.useQuery();
+
+  const approveMutation = trpc.testimonial.approve.useMutation({
+    onSuccess: () => {
+      toast.success("Testimonial approved and will now show on the homepage.");
+      utils.testimonial.listAll.invalidate();
+      utils.testimonial.listApproved.invalidate();
+    },
+    onError: () => toast.error("Failed to approve testimonial."),
+  });
+
+  const rejectMutation = trpc.testimonial.reject.useMutation({
+    onSuccess: () => {
+      toast.success("Testimonial rejected.");
+      utils.testimonial.listAll.invalidate();
+      utils.testimonial.listApproved.invalidate();
+    },
+    onError: () => toast.error("Failed to reject testimonial."),
+  });
+
+  const deleteMutation = trpc.testimonial.delete.useMutation({
+    onSuccess: () => {
+      toast.success("Testimonial deleted.");
+      utils.testimonial.listAll.invalidate();
+      utils.testimonial.listApproved.invalidate();
+    },
+    onError: () => toast.error("Failed to delete testimonial."),
+  });
+
+  const pending = testimonials?.filter((t) => t.status === "pending") ?? [];
+  const approved = testimonials?.filter((t) => t.status === "approved") ?? [];
+  const rejected = testimonials?.filter((t) => t.status === "rejected") ?? [];
+
+  const statusBadge = (status: string) => {
+    if (status === "approved") return <Badge className="bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-200 gap-1"><CheckCircle className="w-3 h-3" />Approved</Badge>;
+    if (status === "rejected") return <Badge className="bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-200 gap-1"><XCircle className="w-3 h-3" />Rejected</Badge>;
+    return <Badge className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-200 gap-1"><Clock className="w-3 h-3" />Pending</Badge>;
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Star className="w-5 h-5 text-yellow-500" />
+          Student Testimonials
+        </CardTitle>
+        <CardDescription>
+          Review and moderate student testimonials before they appear on the homepage.
+          {pending.length > 0 && (
+            <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-200">
+              {pending.length} pending review
+            </span>
+          )}
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        {isLoading ? (
+          <p className="text-muted-foreground text-sm">Loading testimonials...</p>
+        ) : !testimonials || testimonials.length === 0 ? (
+          <p className="text-muted-foreground text-sm">No testimonials submitted yet.</p>
+        ) : (
+          <div className="space-y-4">
+            {[...pending, ...approved, ...rejected].map((t) => (
+              <div key={t.id} className="border rounded-lg p-4 space-y-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap mb-1">
+                      <span className="font-semibold text-sm">{t.name}</span>
+                      {statusBadge(t.status)}
+                      <div className="flex gap-0.5">
+                        {Array.from({ length: t.rating }).map((_, i) => (
+                          <Star key={i} className="w-3 h-3 text-yellow-400 fill-yellow-400" />
+                        ))}
+                      </div>
+                    </div>
+                    {t.certificationPassed && (
+                      <p className="text-xs text-muted-foreground mb-2">{t.certificationPassed}</p>
+                    )}
+                    <p className="text-sm text-foreground/80 italic">&ldquo;{t.quote}&rdquo;</p>
+                    <p className="text-xs text-muted-foreground mt-2">
+                      Submitted {new Date(t.createdAt).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <div className="flex gap-2 shrink-0">
+                    {t.status !== "approved" && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="text-green-600 border-green-300 hover:bg-green-50 dark:hover:bg-green-900/20 gap-1"
+                        onClick={() => approveMutation.mutate({ id: t.id })}
+                        disabled={approveMutation.isPending}
+                      >
+                        <CheckCircle className="w-3 h-3" />
+                        Approve
+                      </Button>
+                    )}
+                    {t.status !== "rejected" && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="text-red-600 border-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 gap-1"
+                        onClick={() => rejectMutation.mutate({ id: t.id })}
+                        disabled={rejectMutation.isPending}
+                      >
+                        <XCircle className="w-3 h-3" />
+                        Reject
+                      </Button>
+                    )}
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="text-muted-foreground hover:text-red-600"
+                      onClick={() => deleteMutation.mutate({ id: t.id })}
+                      disabled={deleteMutation.isPending}
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </Button>
+                  </div>
+                </div>
+              </div>
             ))}
           </div>
         )}

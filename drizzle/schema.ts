@@ -297,3 +297,19 @@ export const studyPlans = mysqlTable("study_plans", {
 
 export type StudyPlan = typeof studyPlans.$inferSelect;
 export type InsertStudyPlan = typeof studyPlans.$inferInsert;
+
+// Testimonials Table
+export const testimonials = mysqlTable("testimonials", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("user_id"), // nullable — allow pre-seeded testimonials without a user account
+  name: varchar("name", { length: 255 }).notNull(),
+  certificationPassed: varchar("certification_passed", { length: 100 }),
+  quote: text("quote").notNull(),
+  rating: int("rating").default(5).notNull(), // 1-5 stars
+  status: mysqlEnum("status", ["pending", "approved", "rejected"]).default("pending").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  reviewedAt: timestamp("reviewed_at"),
+});
+
+export type Testimonial = typeof testimonials.$inferSelect;
+export type InsertTestimonial = typeof testimonials.$inferInsert;

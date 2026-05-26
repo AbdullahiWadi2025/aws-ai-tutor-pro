@@ -379,3 +379,12 @@
 - [x] Show sign-up CTA modal/banner after plan is generated: "Sign up free to save this plan and track your progress"
 - [x] Gate the full plan view behind sign-up (blur weeks 3+ with overlay)
 - [x] Test full flow: fill form → see demo plan → click sign up → redirected to login
+
+## Feature: Student Testimonial Submission & Moderation
+- [x] Add testimonials table to drizzle schema and migrate
+- [x] tRPC procedures: submit (public/auth), listApproved (public), listAll (admin), approve/reject (admin)
+- [x] Notify owner on new submission via notifyOwner
+- [x] Testimonial submission form modal on homepage (for logged-in users) + link in sidebar
+- [x] Display approved testimonials on homepage (rotating with Micaiah's)
+- [x] Admin moderation panel: list pending/approved/rejected with approve/reject buttons
+- [x] Seed Micaiah's testimonial as pre-approved in DB

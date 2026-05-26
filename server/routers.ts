@@ -14,6 +14,7 @@ import { checkAndUnlockAchievements } from "./badge-logic";
 import { betaRouter } from "./beta-router";
 import { gameRouter } from "./game-router";
 import { studyPlanRouter } from "./study-plan-router";
+import { testimonialRouter } from "./testimonial-router";
 
 export const appRouter = router({
   system: systemRouter,
@@ -359,6 +360,7 @@ export const appRouter = router({
   beta: betaRouter,
   game: gameRouter,
   studyPlan: studyPlanRouter,
+  testimonial: testimonialRouter,
 });
 
 export type AppRouter = typeof appRouter;

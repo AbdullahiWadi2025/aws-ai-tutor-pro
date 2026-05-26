@@ -3,8 +3,9 @@ import { Button } from "@/components/ui/button";
 import { getLoginUrl } from "@/const";
 import { useLocation } from "wouter";
 import { useEffect, useState } from "react";
-import { BookOpen, Brain, BarChart3, Zap, Library, Gamepad2, ChevronDown, ChevronUp, Lock, Sparkles, Calendar, Clock, Target } from "lucide-react";
+import { BookOpen, Brain, BarChart3, Zap, Library, Gamepad2, ChevronDown, ChevronUp, Lock, Sparkles, Calendar, Clock, Target, Star, MessageSquarePlus } from "lucide-react";
 import { trpc } from "@/lib/trpc";
+import { TestimonialSubmitModal } from "@/components/TestimonialSubmitModal";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface StudyDay {
@@ -447,6 +448,8 @@ function StudyPlanPreview() {
 export default function Home() {
   const { user, isAuthenticated } = useAuth();
   const [, navigate] = useLocation();
+  const [showTestimonialModal, setShowTestimonialModal] = useState(false);
+  const { data: approvedTestimonials } = trpc.testimonial.listApproved.useQuery();
 
   useEffect(() => {
     if (isAuthenticated && user) {
@@ -594,34 +597,73 @@ export default function Home() {
 
       {/* Testimonials Section */}
       <section className="py-20 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-4xl mx-auto">
+        <div className="max-w-5xl mx-auto">
           <div className="text-center mb-12">
             <h2 className="text-3xl font-bold text-white mb-3">Real Results from Real Students</h2>
-            <p className="text-blue-300">Hear from those who passed their AWS certification using this platform</p>
+            <p className="text-blue-300 mb-6">Hear from those who passed their AWS certification using this platform</p>
+            {isAuthenticated && (
+              <Button
+                onClick={() => setShowTestimonialModal(true)}
+                variant="outline"
+                className="border-blue-400/50 text-blue-300 hover:bg-blue-900/30 gap-2"
+              >
+                <MessageSquarePlus className="w-4 h-4" />
+                Share Your Story
+              </Button>
+            )}
           </div>
-          <div className="bg-gradient-to-br from-blue-900/40 to-slate-800/60 border border-blue-500/30 rounded-2xl p-8 relative">
-            {/* Quote mark */}
-            <div className="absolute -top-4 left-8 w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold text-lg">&ldquo;</div>
-            <p className="text-lg text-slate-200 leading-relaxed mb-6 italic">
-              &ldquo;Shoutout to AWS AI Tutor Pro! I recently used the app to prepare for the AWS Certified Cloud Practitioner exam and passed. The platform provides the perfect momentum and clarity needed to tackle the material efficiently. A fantastic resource for anyone getting certified.&rdquo;
+
+          {/* Testimonial cards grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {(approvedTestimonials && approvedTestimonials.length > 0
+              ? approvedTestimonials
+              : [{
+                  id: 0,
+                  name: "Micaiah Hill-Shuva",
+                  certificationPassed: "AWS Certified Cloud Practitioner (CLF-C02)",
+                  quote: "Shoutout to AWS AI Tutor Pro! I recently used the app to prepare for the AWS Certified Cloud Practitioner exam and passed. The platform provides the perfect momentum and clarity needed to tackle the material efficiently. A fantastic resource for anyone getting certified.",
+                  rating: 5,
+                }]
+            ).map((t) => (
+              <div key={t.id} className="bg-gradient-to-br from-blue-900/40 to-slate-800/60 border border-blue-500/30 rounded-2xl p-6 relative flex flex-col">
+                <div className="absolute -top-3 left-6 w-7 h-7 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold text-sm">&ldquo;</div>
+                <p className="text-slate-200 leading-relaxed mb-5 italic flex-1">&ldquo;{t.quote}&rdquo;</p>
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold shrink-0">
+                    {t.name.charAt(0).toUpperCase()}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-white truncate">{t.name}</p>
+                    {t.certificationPassed && (
+                      <p className="text-xs text-blue-300 truncate">{t.certificationPassed} &mdash; Passed ✓</p>
+                    )}
+                  </div>
+                  <div className="flex gap-0.5 shrink-0">
+                    {Array.from({ length: t.rating ?? 5 }).map((_, i) => (
+                      <Star key={i} className="w-4 h-4 text-yellow-400 fill-yellow-400" />
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* CTA to submit if not logged in */}
+          {!isAuthenticated && (
+            <p className="text-center text-blue-400 text-sm mt-8">
+              Passed your exam?{" "}
+              <a href={getLoginUrl()} className="underline hover:text-white transition-colors">Sign in</a>
+              {" "}to share your story.
             </p>
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg shrink-0">
-                M
-              </div>
-              <div>
-                <p className="font-semibold text-white">Micaiah Hill-Shuva</p>
-                <p className="text-sm text-blue-300">AWS Certified Cloud Practitioner (CLF-C02) &mdash; Passed ✓</p>
-              </div>
-              <div className="ml-auto flex gap-1">
-                {[1,2,3,4,5].map(i => (
-                  <span key={i} className="text-yellow-400 text-lg">★</span>
-                ))}
-              </div>
-            </div>
-          </div>
+          )}
         </div>
       </section>
+
+      {/* Testimonial submit modal */}
+      <TestimonialSubmitModal
+        open={showTestimonialModal}
+        onClose={() => setShowTestimonialModal(false)}
+      />
 
       {/* CTA Section */}
       <section className="py-20 px-4 sm:px-6 lg:px-8">
