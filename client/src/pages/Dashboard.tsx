@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useLocation } from "wouter";
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
-import { BookOpen, Zap, Brain, BarChart3, LogOut, Settings, MessageSquarePlus } from "lucide-react";
+import { BookOpen, Zap, Brain, BarChart3, LogOut, Settings, MessageSquarePlus, FlaskConical } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { StudyRecommendations } from "@/components/StudyRecommendations";
 import { AchievementsCard } from "@/components/AchievementsCard";
@@ -284,6 +284,21 @@ export default function Dashboard() {
               Get a custom study schedule built around your exam date, daily availability, and weak topics.
             </p>
             <Button className="w-full bg-purple-500 hover:bg-purple-600 text-white">Generate My Plan 🗓️</Button>
+          </Card>
+          <Card className="p-6 hover:shadow-lg transition-shadow cursor-pointer border-2 border-emerald-200 dark:border-emerald-800" onClick={() => navigate("/project-lab")}>
+            <div className="flex items-center gap-4 mb-4">
+              <div className="bg-emerald-100 dark:bg-emerald-900 p-3 rounded-lg">
+                <FlaskConical className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Project Lab</h3>
+                <span className="text-xs font-bold text-emerald-500 uppercase tracking-wide">Hands-On · Real AWS</span>
+              </div>
+            </div>
+            <p className="text-slate-600 dark:text-slate-300 mb-4 text-sm">
+              Build 12 real AWS projects from beginner to advanced — reinforce exam topics with hands-on practice.
+            </p>
+            <Button className="w-full bg-emerald-500 hover:bg-emerald-600 text-white">Explore Projects 🔬</Button>
           </Card>
         </div>
 
