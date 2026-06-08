@@ -388,3 +388,12 @@
 - [x] Display approved testimonials on homepage (rotating with Micaiah's)
 - [x] Admin moderation panel: list pending/approved/rejected with approve/reject buttons
 - [x] Seed Micaiah's testimonial as pre-approved in DB
+
+## Feature: Hands-On Project Lab
+- [x] Add project_progress table to drizzle schema (userId, projectId, completedSteps JSON, completedAt)
+- [x] tRPC procedures: getProjects (public), getProjectProgress (protected), saveProgress (protected)
+- [x] Build 12 curated AWS projects (4 beginner, 4 intermediate, 4 advanced) with steps, cost, time, exam tags
+- [x] Project Lab page with filter by difficulty and certification
+- [x] Step-by-step checklist modal with progress tracking per user
+- [x] Add Project Lab to sidebar navigation and App.tsx routes
+- [x] Test full flow and save checkpoint

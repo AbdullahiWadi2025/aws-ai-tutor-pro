@@ -21,15 +21,22 @@ import {
 } from "@/components/ui/sidebar";
 import { getLoginUrl } from "@/const";
 import { useIsMobile } from "@/hooks/useMobile";
-import { LayoutDashboard, LogOut, PanelLeft, Users } from "lucide-react";
+import { LayoutDashboard, LogOut, PanelLeft, BookOpen, ClipboardList, Brain, TrendingUp, Gamepad2, GraduationCap, Calendar, FlaskConical } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
 import { Button } from "./ui/button";
 
 const menuItems = [
-  { icon: LayoutDashboard, label: "Page 1", path: "/" },
-  { icon: Users, label: "Page 2", path: "/some-path" },
+  { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
+  { icon: ClipboardList, label: "Practice Mode", path: "/practice" },
+  { icon: BookOpen, label: "Exam Mode", path: "/exam" },
+  { icon: Brain, label: "AI Tutor", path: "/ai-tutor" },
+  { icon: Calendar, label: "Study Plan", path: "/study-plan" },
+  { icon: FlaskConical, label: "Project Lab", path: "/project-lab" },
+  { icon: Gamepad2, label: "Training Arena", path: "/game" },
+  { icon: GraduationCap, label: "Learning Center", path: "/learn" },
+  { icon: TrendingUp, label: "Progress", path: "/progress" },
 ];
 
 const SIDEBAR_WIDTH_KEY = "sidebar-width";

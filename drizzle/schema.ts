@@ -313,3 +313,16 @@ export const testimonials = mysqlTable("testimonials", {
 
 export type Testimonial = typeof testimonials.$inferSelect;
 export type InsertTestimonial = typeof testimonials.$inferInsert;
+
+// Project Lab Progress Table
+export const projectProgress = mysqlTable("project_progress", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("user_id").notNull(),
+  projectId: varchar("project_id", { length: 64 }).notNull(), // static project slug e.g. "s3-static-website"
+  completedSteps: json("completed_steps").$type<number[]>().notNull().default([]),
+  completedAt: timestamp("completed_at"), // set when all steps are done
+  startedAt: timestamp("started_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+export type ProjectProgress = typeof projectProgress.$inferSelect;
+export type InsertProjectProgress = typeof projectProgress.$inferInsert;
