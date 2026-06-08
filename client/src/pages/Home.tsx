@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { getLoginUrl } from "@/const";
 import { useLocation } from "wouter";
 import { useEffect, useState } from "react";
-import { BookOpen, Brain, BarChart3, Zap, Library, Gamepad2, ChevronDown, ChevronUp, Lock, Sparkles, Calendar, Clock, Target, Star, MessageSquarePlus } from "lucide-react";
+import { BookOpen, Brain, BarChart3, Zap, Library, Gamepad2, ChevronDown, ChevronUp, Lock, Sparkles, Calendar, Clock, Target, Star, MessageSquarePlus, FlaskConical } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { TestimonialSubmitModal } from "@/components/TestimonialSubmitModal";
 
@@ -590,6 +590,14 @@ export default function Home() {
               <Gamepad2 className="w-8 h-8 text-orange-400 mb-3" />
               <h3 className="text-xl font-bold text-white mb-2">Training Arena</h3>
               <p className="text-blue-200">5 game modes: Match It (31 levels), Escape Room, Troubleshoot, Scenario Quiz &amp; RPG Campaign</p>
+            </div>
+            <div className="group bg-gradient-to-br from-slate-700/50 to-slate-800/50 border border-emerald-400/20 rounded-xl p-6 hover:border-emerald-400/50 transition-all">
+              <div className="mb-4 h-40 rounded-lg bg-gradient-to-br from-emerald-900/40 to-slate-800/60 flex items-center justify-center">
+                <span className="text-6xl">🔬</span>
+              </div>
+              <FlaskConical className="w-8 h-8 text-emerald-400 mb-3" />
+              <h3 className="text-xl font-bold text-white mb-2">Project Lab</h3>
+              <p className="text-blue-200">12 hands-on AWS projects from beginner to advanced — build real architectures and reinforce exam topics</p>
             </div>
           </div>
         </div>
