@@ -126,7 +126,7 @@ LAYOUT RULES (critical — follow exactly):
 EDGE RULES (critical — follow exactly):
 - Only draw edges that represent DIRECT data flow or requests between two services.
 - Maximum edges per node: 3. No node should have more than 3 connections total.
-- Monitoring services (cloudwatch, cloudtrail, xray, config) must connect to AT MOST ONE node — the central/most important compute node. Never connect monitoring to every node.
+- Monitoring services (cloudwatch, cloudtrail, xray, config) must connect to AT MOST ONE node — always prefer a compute node (ec2, lambda, ecs, eks, fargate) as the target. If no compute node exists, connect to the most central node. NEVER connect monitoring to networking nodes (cloudfront, alb, route53, apigateway) or the user/internet node.
 - Security services (iam, waf, shield, guardduty) should have NO edges unless explicitly in the request flow.
 - For branching: ALB connects to EC2 Instance 1 AND EC2 Instance 2. Then EACH EC2 connects to the shared database. Do NOT cross-connect EC2 Instance 1 to ElastiCache and EC2 Instance 2 to RDS — both should connect to BOTH shared services or just one each without crossing.
 - Do NOT add edge labels unless essential and unique (e.g. "HTTPS"). Never use "Monitors", "Manages", "Connects to".
