@@ -113,22 +113,24 @@ export const diagramRouter = router({
 Allowed serviceId values: ${AWS_SERVICE_IDS.join(", ")}.
 
 LAYOUT RULES (critical — follow exactly):
-- Use a LEFT-TO-RIGHT horizontal flow. The first node (e.g. User or Internet) starts at x=80, y=300.
-- Each subsequent node in the main flow moves RIGHT by 200px: x=80, x=280, x=480, x=680, x=880, x=1080.
-- Keep all nodes on the same horizontal center line (y=300) unless branching.
-- For branching (e.g. a node connects to two children), place children ABOVE (y=150) and BELOW (y=450) the center line at the SAME x position.
-- NEVER stack nodes vertically with the same x value unless they are side branches.
-- Minimum horizontal gap between nodes: 180px. Minimum vertical gap: 140px.
-- Keep x between 80 and 1200, y between 80 and 600.
+- Use a LEFT-TO-RIGHT horizontal flow. The first node (e.g. User or Internet) starts at x=80, y=280.
+- Each subsequent node in the MAIN REQUEST FLOW moves RIGHT by 200px along y=280: x=80, x=280, x=480, x=680, x=880.
+- For branching from a single node to two children (e.g. ALB to two EC2 instances): place child 1 at (same_x + 200, y=150) and child 2 at (same_x + 200, y=420). Both children share the same x value.
+- After a branch, if both children connect to the same next node (e.g. both EC2 connect to RDS), place that shared node to the RIGHT of the branch children at (branch_x + 200, y=280).
+- NEVER place a branched child at a different x than its sibling.
+- Minimum horizontal gap: 180px. Minimum vertical gap: 130px.
+- Keep x between 80 and 1200, y between 50 and 580.
 - If the description mentions "Users" or "clients", use serviceId "user" as the first node.
+- MONITORING/SIDE SERVICES PLACEMENT: Services like cloudwatch, cloudtrail, iam, waf, shield, guardduty are NOT part of the main flow. Place them BELOW the main flow at y=520, spaced 200px apart starting from x=300. They should never be placed at the end of the main flow line.
 
 EDGE RULES (critical — follow exactly):
 - Only draw edges that represent DIRECT data flow or requests between two services.
 - Maximum edges per node: 3. No node should have more than 3 connections total.
-- Monitoring/observability services (cloudwatch, cloudtrail, xray, config) must connect to AT MOST ONE node — the most important one. Do NOT draw a monitoring edge to every node.
-- Security services (iam, waf, shield, guardduty) should NOT have any edges unless they are explicitly part of the request flow.
-- Do NOT add edge labels unless the label is essential and unique (e.g. "HTTPS", "SQL"). Never use generic labels like "Monitors", "Manages", "Connects to".
-- Keep total edge count low: aim for (number of nodes - 1) edges for a clean linear flow, max (number of nodes + 2) for branching.
+- Monitoring services (cloudwatch, cloudtrail, xray, config) must connect to AT MOST ONE node — the central/most important compute node. Never connect monitoring to every node.
+- Security services (iam, waf, shield, guardduty) should have NO edges unless explicitly in the request flow.
+- For branching: ALB connects to EC2 Instance 1 AND EC2 Instance 2. Then EACH EC2 connects to the shared database. Do NOT cross-connect EC2 Instance 1 to ElastiCache and EC2 Instance 2 to RDS — both should connect to BOTH shared services or just one each without crossing.
+- Do NOT add edge labels unless essential and unique (e.g. "HTTPS"). Never use "Monitors", "Manages", "Connects to".
+- Keep total edges: aim for (nodes - 1) for linear, max (nodes + 2) for branching.
 - Edges reference node array indices (0-based). Do not create self-loops.
 - Return ONLY the raw JSON object. No markdown fences, no explanation text.`;
 
