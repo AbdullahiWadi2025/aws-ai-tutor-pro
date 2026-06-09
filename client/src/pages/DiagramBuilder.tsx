@@ -8,6 +8,7 @@ import {
   useEdgesState,
   addEdge,
   BackgroundVariant,
+  ConnectionLineType,
   type Connection,
   type Edge,
   type Node,
@@ -308,15 +309,40 @@ export default function DiagramBuilder() {
 
       const newEdges: Edge[] = data.edges
         .filter(e => e.from !== e.to && e.from < newNodes.length && e.to < newNodes.length)
-        .map((e, i) => ({
-          id: `ai-edge-${i}`,
-          source: newNodes[e.from].id,
-          target: newNodes[e.to].id,
-          label: e.label || undefined,
-          animated: false,
-          style: { stroke: "#818cf8", strokeWidth: 2 },
-          markerEnd: { type: "arrowclosed" as any, color: "#818cf8", width: 18, height: 18 },
-        }));
+        .map((e, i) => {
+          const srcNode = newNodes[e.from];
+          const tgtNode = newNodes[e.to];
+          // Pick source/target handles based on relative positions to avoid top-routing
+          const srcX = srcNode.position.x;
+          const tgtX = tgtNode.position.x;
+          const srcY = srcNode.position.y;
+          const tgtY = tgtNode.position.y;
+          const dx = tgtX - srcX;
+          const dy = tgtY - srcY;
+          let sourceHandle: string;
+          let targetHandle: string;
+          if (Math.abs(dx) >= Math.abs(dy)) {
+            // Primarily horizontal
+            sourceHandle = dx >= 0 ? "right-s" : "left-s";
+            targetHandle = dx >= 0 ? "left-t" : "right-t";
+          } else {
+            // Primarily vertical
+            sourceHandle = dy >= 0 ? "bottom-s" : "top-s";
+            targetHandle = dy >= 0 ? "top-t" : "bottom-t";
+          }
+          return {
+            id: `ai-edge-${i}`,
+            source: srcNode.id,
+            target: tgtNode.id,
+            sourceHandle,
+            targetHandle,
+            label: e.label || undefined,
+            type: "smoothstep",
+            animated: false,
+            style: { stroke: "#818cf8", strokeWidth: 2 },
+            markerEnd: { type: "arrowclosed" as any, color: "#818cf8", width: 18, height: 18 },
+          };
+        });
 
       setNodes(newNodes);
       setEdges(newEdges);
@@ -336,6 +362,7 @@ export default function DiagramBuilder() {
   const onConnect = useCallback(
     (params: Connection) => setEdges((eds) => addEdge({
       ...params,
+      type: "smoothstep",
       animated: false,
       style: { stroke: "#818cf8", strokeWidth: 2 },
       markerEnd: { type: "arrowclosed" as any, color: "#818cf8", width: 18, height: 18 },
@@ -625,7 +652,9 @@ export default function DiagramBuilder() {
             nodeTypes={nodeTypes}
             fitView
             style={{ background: "#1e2433" }}
+            connectionLineType={ConnectionLineType.SmoothStep}
             defaultEdgeOptions={{
+              type: "smoothstep",
               animated: false,
               style: { stroke: "#818cf8", strokeWidth: 2 },
               markerEnd: { type: "arrowclosed" as any, color: "#818cf8", width: 18, height: 18 },
