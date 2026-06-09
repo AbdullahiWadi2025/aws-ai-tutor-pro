@@ -397,3 +397,13 @@
 - [x] Step-by-step checklist modal with progress tracking per user
 - [x] Add Project Lab to sidebar navigation and App.tsx routes
 - [x] Test full flow and save checkpoint
+
+## Feature: AWS Diagram Builder
+- [x] Install @xyflow/react (React Flow) package
+- [x] Add diagrams table to drizzle schema (id, userId, name, nodesJson, edgesJson, createdAt, updatedAt)
+- [x] tRPC procedures: saveDiagram, listDiagrams, getDiagram, deleteDiagram (all protected)
+- [x] DiagramBuilder page with React Flow canvas, 30+ AWS service icons in palette with category filter
+- [x] AWS service nodes: EC2, S3, RDS, Lambda, VPC, CloudFront, ALB, API Gateway, DynamoDB, SQS, SNS, ECS, EKS, Route53, IAM, CloudWatch, Cognito, ElastiCache, Kinesis, Bedrock + more
+- [x] Save/load diagrams per user with named diagrams list
+- [x] Add to sidebar navigation and Dashboard quick-access card
+- [x] Test full flow and save checkpoint

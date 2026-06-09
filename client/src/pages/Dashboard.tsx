@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useLocation } from "wouter";
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
-import { BookOpen, Zap, Brain, BarChart3, LogOut, Settings, MessageSquarePlus, FlaskConical } from "lucide-react";
+import { BookOpen, Zap, Brain, BarChart3, LogOut, Settings, MessageSquarePlus, FlaskConical, Network } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { StudyRecommendations } from "@/components/StudyRecommendations";
 import { AchievementsCard } from "@/components/AchievementsCard";
@@ -299,6 +299,21 @@ export default function Dashboard() {
               Build 12 real AWS projects from beginner to advanced — reinforce exam topics with hands-on practice.
             </p>
             <Button className="w-full bg-emerald-500 hover:bg-emerald-600 text-white">Explore Projects 🔬</Button>
+          </Card>
+          <Card className="p-6 hover:shadow-lg transition-shadow cursor-pointer border-2 border-cyan-200 dark:border-cyan-800" onClick={() => navigate("/diagram-builder")}>
+            <div className="flex items-center gap-4 mb-4">
+              <div className="bg-cyan-100 dark:bg-cyan-900 p-3 rounded-lg">
+                <Network className="w-6 h-6 text-cyan-600 dark:text-cyan-400" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Diagram Builder</h3>
+                <span className="text-xs font-bold text-cyan-500 uppercase tracking-wide">Visual · Architecture</span>
+              </div>
+            </div>
+            <p className="text-slate-600 dark:text-slate-300 mb-4 text-sm">
+              Design AWS architectures visually — drag and drop 30+ AWS services onto a canvas and connect them.
+            </p>
+            <Button className="w-full bg-cyan-500 hover:bg-cyan-600 text-white">Open Builder 🗺️</Button>
           </Card>
         </div>
 

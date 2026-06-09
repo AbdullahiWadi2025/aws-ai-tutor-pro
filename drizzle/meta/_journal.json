@@ -71,6 +71,13 @@
       "when": 1780903069798,
       "tag": "0009_gigantic_boomer",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "5",
+      "when": 1781031447904,
+      "tag": "0010_nappy_bishop",
+      "breakpoints": true
     }
   ]
 }

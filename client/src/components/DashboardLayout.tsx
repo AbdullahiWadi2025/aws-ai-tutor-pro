@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/sidebar";
 import { getLoginUrl } from "@/const";
 import { useIsMobile } from "@/hooks/useMobile";
-import { LayoutDashboard, LogOut, PanelLeft, BookOpen, ClipboardList, Brain, TrendingUp, Gamepad2, GraduationCap, Calendar, FlaskConical } from "lucide-react";
+import { LayoutDashboard, LogOut, PanelLeft, BookOpen, ClipboardList, Brain, TrendingUp, Gamepad2, GraduationCap, Calendar, FlaskConical, Network } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
@@ -34,6 +34,7 @@ const menuItems = [
   { icon: Brain, label: "AI Tutor", path: "/ai-tutor" },
   { icon: Calendar, label: "Study Plan", path: "/study-plan" },
   { icon: FlaskConical, label: "Project Lab", path: "/project-lab" },
+  { icon: Network, label: "Diagram Builder", path: "/diagram-builder" },
   { icon: Gamepad2, label: "Training Arena", path: "/game" },
   { icon: GraduationCap, label: "Learning Center", path: "/learn" },
   { icon: TrendingUp, label: "Progress", path: "/progress" },

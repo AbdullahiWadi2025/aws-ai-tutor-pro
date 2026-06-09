@@ -16,6 +16,7 @@ import { gameRouter } from "./game-router";
 import { studyPlanRouter } from "./study-plan-router";
 import { testimonialRouter } from "./testimonial-router";
 import { projectLabRouter } from "./project-lab-router";
+import { diagramRouter } from "./diagram-router";
 
 export const appRouter = router({
   system: systemRouter,
@@ -363,6 +364,7 @@ export const appRouter = router({
   studyPlan: studyPlanRouter,
   testimonial: testimonialRouter,
   projectLab: projectLabRouter,
+  diagram: diagramRouter,
 });
 
 export type AppRouter = typeof appRouter;

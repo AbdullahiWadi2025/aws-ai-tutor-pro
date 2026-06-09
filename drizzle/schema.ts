@@ -1,4 +1,4 @@
-import { int, mysqlEnum, mysqlTable, text, timestamp, varchar, json, boolean, decimal } from "drizzle-orm/mysql-core";
+import { int, bigint, mysqlEnum, mysqlTable, text, timestamp, varchar, json, boolean, decimal } from "drizzle-orm/mysql-core";
 
 /**
  * Core user table backing auth flow.
@@ -326,3 +326,17 @@ export const projectProgress = mysqlTable("project_progress", {
 });
 export type ProjectProgress = typeof projectProgress.$inferSelect;
 export type InsertProjectProgress = typeof projectProgress.$inferInsert;
+
+// AWS Diagram Builder
+export const diagrams = mysqlTable("diagrams", {
+  id: int("id").primaryKey().autoincrement(),
+  userId: int("user_id").notNull(),
+  name: varchar("name", { length: 255 }).notNull().default("Untitled Diagram"),
+  nodesJson: text("nodes_json").notNull().default("[]"),
+  edgesJson: text("edges_json").notNull().default("[]"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Diagram = typeof diagrams.$inferSelect;
+export type InsertDiagram = typeof diagrams.$inferInsert;
