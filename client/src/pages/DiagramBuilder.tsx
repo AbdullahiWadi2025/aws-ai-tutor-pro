@@ -138,10 +138,15 @@ function AwsServiceNode({ data }: { data: { label: string; iconUrl: string; colo
         padding: "8px 6px",
       }}
     >
-      <Handle type="target" position={Position.Top} style={{ background: data.color, width: 8, height: 8 }} />
-      <Handle type="source" position={Position.Bottom} style={{ background: data.color, width: 8, height: 8 }} />
-      <Handle type="target" position={Position.Left} style={{ background: data.color, width: 8, height: 8 }} />
-      <Handle type="source" position={Position.Right} style={{ background: data.color, width: 8, height: 8 }} />
+      {/* Each side has both a source and target handle so connections work in any direction */}
+      <Handle type="source" id="top-s" position={Position.Top} style={{ background: data.color, width: 8, height: 8 }} />
+      <Handle type="target" id="top-t" position={Position.Top} style={{ background: data.color, width: 8, height: 8, opacity: 0, pointerEvents: "all" }} />
+      <Handle type="source" id="bottom-s" position={Position.Bottom} style={{ background: data.color, width: 8, height: 8 }} />
+      <Handle type="target" id="bottom-t" position={Position.Bottom} style={{ background: data.color, width: 8, height: 8, opacity: 0, pointerEvents: "all" }} />
+      <Handle type="source" id="left-s" position={Position.Left} style={{ background: data.color, width: 8, height: 8 }} />
+      <Handle type="target" id="left-t" position={Position.Left} style={{ background: data.color, width: 8, height: 8, opacity: 0, pointerEvents: "all" }} />
+      <Handle type="source" id="right-s" position={Position.Right} style={{ background: data.color, width: 8, height: 8 }} />
+      <Handle type="target" id="right-t" position={Position.Right} style={{ background: data.color, width: 8, height: 8, opacity: 0, pointerEvents: "all" }} />
       <img
         src={data.iconUrl}
         alt={data.label}
