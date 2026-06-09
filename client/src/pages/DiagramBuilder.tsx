@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useMemo } from "react";
 import {
   ReactFlow,
   MiniMap,
@@ -34,54 +34,82 @@ import {
   FolderOpen,
   Trash2,
   Plus,
-  Download,
   RotateCcw,
   ChevronRight,
   ChevronLeft,
+  Search,
+  X,
 } from "lucide-react";
 
-// ─── AWS Service definitions ─────────────────────────────────────────────────
+// ─── Official AWS SVG icon URLs from icepanel.io (official AWS icon set) ───────
 const AWS_SERVICES = [
   // Compute
-  { id: "ec2", label: "EC2", category: "Compute", color: "#FF9900", emoji: "🖥️" },
-  { id: "lambda", label: "Lambda", category: "Compute", color: "#FF9900", emoji: "λ" },
-  { id: "ecs", label: "ECS", category: "Compute", color: "#FF9900", emoji: "🐳" },
-  { id: "eks", label: "EKS", category: "Compute", color: "#FF9900", emoji: "☸️" },
-  { id: "beanstalk", label: "Elastic Beanstalk", category: "Compute", color: "#FF9900", emoji: "🌱" },
+  { id: "ec2", label: "EC2", category: "Compute", color: "#FF9900", iconUrl: "https://icon.icepanel.io/AWS/svg/Compute/EC2.svg" },
+  { id: "lambda", label: "Lambda", category: "Compute", color: "#FF9900", iconUrl: "https://icon.icepanel.io/AWS/svg/Compute/Lambda.svg" },
+  { id: "ecs", label: "ECS", category: "Compute", color: "#FF9900", iconUrl: "https://icon.icepanel.io/AWS/svg/Containers/Elastic-Container-Service.svg" },
+  { id: "eks", label: "EKS", category: "Compute", color: "#FF9900", iconUrl: "https://icon.icepanel.io/AWS/svg/Containers/Elastic-Kubernetes-Service.svg" },
+  { id: "beanstalk", label: "Elastic Beanstalk", category: "Compute", color: "#FF9900", iconUrl: "https://icon.icepanel.io/AWS/svg/Compute/Elastic-Beanstalk.svg" },
+  { id: "fargate", label: "Fargate", category: "Compute", color: "#FF9900", iconUrl: "https://icon.icepanel.io/AWS/svg/Containers/Fargate.svg" },
+  { id: "lightsail", label: "Lightsail", category: "Compute", color: "#FF9900", iconUrl: "https://icon.icepanel.io/AWS/svg/Compute/Lightsail.svg" },
+  { id: "batch", label: "Batch", category: "Compute", color: "#FF9900", iconUrl: "https://icon.icepanel.io/AWS/svg/Compute/Batch.svg" },
   // Storage
-  { id: "s3", label: "S3", category: "Storage", color: "#3F8624", emoji: "🪣" },
-  { id: "ebs", label: "EBS", category: "Storage", color: "#3F8624", emoji: "💾" },
-  { id: "efs", label: "EFS", category: "Storage", color: "#3F8624", emoji: "📁" },
-  { id: "glacier", label: "S3 Glacier", category: "Storage", color: "#3F8624", emoji: "🧊" },
+  { id: "s3", label: "S3", category: "Storage", color: "#3F8624", iconUrl: "https://icon.icepanel.io/AWS/svg/Storage/Simple-Storage-Service.svg" },
+  { id: "ebs", label: "EBS", category: "Storage", color: "#3F8624", iconUrl: "https://icon.icepanel.io/AWS/svg/Storage/Elastic-Block-Store.svg" },
+  { id: "efs", label: "EFS", category: "Storage", color: "#3F8624", iconUrl: "https://icon.icepanel.io/AWS/svg/Storage/Elastic-File-System.svg" },
+  { id: "glacier", label: "S3 Glacier", category: "Storage", color: "#3F8624", iconUrl: "https://icon.icepanel.io/AWS/svg/Storage/Simple-Storage-Service-Glacier.svg" },
+  { id: "fsx", label: "FSx", category: "Storage", color: "#3F8624", iconUrl: "https://icon.icepanel.io/AWS/svg/Storage/FSx.svg" },
+  { id: "storagegateway", label: "Storage Gateway", category: "Storage", color: "#3F8624", iconUrl: "https://icon.icepanel.io/AWS/svg/Storage/Storage-Gateway.svg" },
   // Database
-  { id: "rds", label: "RDS", category: "Database", color: "#2E73B8", emoji: "🗄️" },
-  { id: "dynamodb", label: "DynamoDB", category: "Database", color: "#2E73B8", emoji: "⚡" },
-  { id: "elasticache", label: "ElastiCache", category: "Database", color: "#2E73B8", emoji: "🚀" },
-  { id: "aurora", label: "Aurora", category: "Database", color: "#2E73B8", emoji: "🌌" },
+  { id: "rds", label: "RDS", category: "Database", color: "#2E73B8", iconUrl: "https://icon.icepanel.io/AWS/svg/Database/RDS.svg" },
+  { id: "dynamodb", label: "DynamoDB", category: "Database", color: "#2E73B8", iconUrl: "https://icon.icepanel.io/AWS/svg/Database/DynamoDB.svg" },
+  { id: "elasticache", label: "ElastiCache", category: "Database", color: "#2E73B8", iconUrl: "https://icon.icepanel.io/AWS/svg/Database/ElastiCache.svg" },
+  { id: "aurora", label: "Aurora", category: "Database", color: "#2E73B8", iconUrl: "https://icon.icepanel.io/AWS/svg/Database/Aurora.svg" },
+  { id: "redshift", label: "Redshift", category: "Database", color: "#2E73B8", iconUrl: "https://icon.icepanel.io/AWS/svg/Database/Redshift.svg" },
+  { id: "neptune", label: "Neptune", category: "Database", color: "#2E73B8", iconUrl: "https://icon.icepanel.io/AWS/svg/Database/Neptune.svg" },
+  { id: "documentdb", label: "DocumentDB", category: "Database", color: "#2E73B8", iconUrl: "https://icon.icepanel.io/AWS/svg/Database/DocumentDB.svg" },
   // Networking
-  { id: "vpc", label: "VPC", category: "Networking", color: "#8C4FFF", emoji: "🔒" },
-  { id: "cloudfront", label: "CloudFront", category: "Networking", color: "#8C4FFF", emoji: "🌐" },
-  { id: "route53", label: "Route 53", category: "Networking", color: "#8C4FFF", emoji: "🌍" },
-  { id: "alb", label: "ALB", category: "Networking", color: "#8C4FFF", emoji: "⚖️" },
-  { id: "apigateway", label: "API Gateway", category: "Networking", color: "#8C4FFF", emoji: "🚪" },
+  { id: "vpc", label: "VPC", category: "Networking", color: "#8C4FFF", iconUrl: "https://icon.icepanel.io/AWS/svg/Networking-Content-Delivery/Virtual-Private-Cloud.svg" },
+  { id: "cloudfront", label: "CloudFront", category: "Networking", color: "#8C4FFF", iconUrl: "https://icon.icepanel.io/AWS/svg/Networking-Content-Delivery/CloudFront.svg" },
+  { id: "route53", label: "Route 53", category: "Networking", color: "#8C4FFF", iconUrl: "https://icon.icepanel.io/AWS/svg/Networking-Content-Delivery/Route-53.svg" },
+  { id: "alb", label: "Load Balancer", category: "Networking", color: "#8C4FFF", iconUrl: "https://icon.icepanel.io/AWS/svg/Networking-Content-Delivery/Elastic-Load-Balancing.svg" },
+  { id: "apigateway", label: "API Gateway", category: "Networking", color: "#8C4FFF", iconUrl: "https://icon.icepanel.io/AWS/svg/App-Integration/API-Gateway.svg" },
+  { id: "directconnect", label: "Direct Connect", category: "Networking", color: "#8C4FFF", iconUrl: "https://icon.icepanel.io/AWS/svg/Networking-Content-Delivery/Direct-Connect.svg" },
+  { id: "transitgateway", label: "Transit Gateway", category: "Networking", color: "#8C4FFF", iconUrl: "https://icon.icepanel.io/AWS/svg/Networking-Content-Delivery/Transit-Gateway.svg" },
   // Messaging
-  { id: "sqs", label: "SQS", category: "Messaging", color: "#E7157B", emoji: "📬" },
-  { id: "sns", label: "SNS", category: "Messaging", color: "#E7157B", emoji: "📣" },
-  { id: "kinesis", label: "Kinesis", category: "Messaging", color: "#E7157B", emoji: "🌊" },
-  { id: "eventbridge", label: "EventBridge", category: "Messaging", color: "#E7157B", emoji: "🎯" },
+  { id: "sqs", label: "SQS", category: "Messaging", color: "#E7157B", iconUrl: "https://icon.icepanel.io/AWS/svg/App-Integration/Simple-Queue-Service.svg" },
+  { id: "sns", label: "SNS", category: "Messaging", color: "#E7157B", iconUrl: "https://icon.icepanel.io/AWS/svg/App-Integration/Simple-Notification-Service.svg" },
+  { id: "kinesis", label: "Kinesis", category: "Messaging", color: "#E7157B", iconUrl: "https://icon.icepanel.io/AWS/svg/Analytics/Kinesis.svg" },
+  { id: "eventbridge", label: "EventBridge", category: "Messaging", color: "#E7157B", iconUrl: "https://icon.icepanel.io/AWS/svg/App-Integration/EventBridge.svg" },
+  { id: "mq", label: "Amazon MQ", category: "Messaging", color: "#E7157B", iconUrl: "https://icon.icepanel.io/AWS/svg/App-Integration/MQ.svg" },
+  { id: "stepfunctions", label: "Step Functions", category: "Messaging", color: "#E7157B", iconUrl: "https://icon.icepanel.io/AWS/svg/App-Integration/Step-Functions.svg" },
   // Security
-  { id: "iam", label: "IAM", category: "Security", color: "#DD344C", emoji: "🔑" },
-  { id: "cognito", label: "Cognito", category: "Security", color: "#DD344C", emoji: "👤" },
-  { id: "waf", label: "WAF", category: "Security", color: "#DD344C", emoji: "🛡️" },
-  { id: "kms", label: "KMS", category: "Security", color: "#DD344C", emoji: "🔐" },
+  { id: "iam", label: "IAM", category: "Security", color: "#DD344C", iconUrl: "https://icon.icepanel.io/AWS/svg/Security-Identity-Compliance/Identity-and-Access-Management.svg" },
+  { id: "cognito", label: "Cognito", category: "Security", color: "#DD344C", iconUrl: "https://icon.icepanel.io/AWS/svg/Security-Identity-Compliance/Cognito.svg" },
+  { id: "waf", label: "WAF", category: "Security", color: "#DD344C", iconUrl: "https://icon.icepanel.io/AWS/svg/Security-Identity-Compliance/WAF.svg" },
+  { id: "kms", label: "KMS", category: "Security", color: "#DD344C", iconUrl: "https://icon.icepanel.io/AWS/svg/Security-Identity-Compliance/Key-Management-Service.svg" },
+  { id: "shield", label: "Shield", category: "Security", color: "#DD344C", iconUrl: "https://icon.icepanel.io/AWS/svg/Security-Identity-Compliance/Shield.svg" },
+  { id: "secretsmanager", label: "Secrets Manager", category: "Security", color: "#DD344C", iconUrl: "https://icon.icepanel.io/AWS/svg/Security-Identity-Compliance/Secrets-Manager.svg" },
+  { id: "guardduty", label: "GuardDuty", category: "Security", color: "#DD344C", iconUrl: "https://icon.icepanel.io/AWS/svg/Security-Identity-Compliance/GuardDuty.svg" },
   // Monitoring
-  { id: "cloudwatch", label: "CloudWatch", category: "Monitoring", color: "#E7157B", emoji: "📊" },
-  { id: "cloudtrail", label: "CloudTrail", category: "Monitoring", color: "#E7157B", emoji: "🔍" },
-  { id: "xray", label: "X-Ray", category: "Monitoring", color: "#E7157B", emoji: "🩻" },
+  { id: "cloudwatch", label: "CloudWatch", category: "Monitoring", color: "#E7157B", iconUrl: "https://icon.icepanel.io/AWS/svg/Management-Governance/CloudWatch.svg" },
+  { id: "cloudtrail", label: "CloudTrail", category: "Monitoring", color: "#E7157B", iconUrl: "https://icon.icepanel.io/AWS/svg/Management-Governance/CloudTrail.svg" },
+  { id: "xray", label: "X-Ray", category: "Monitoring", color: "#E7157B", iconUrl: "https://icon.icepanel.io/AWS/svg/Developer-Tools/X-Ray.svg" },
+  { id: "config", label: "AWS Config", category: "Monitoring", color: "#E7157B", iconUrl: "https://icon.icepanel.io/AWS/svg/Management-Governance/Config.svg" },
+  { id: "trustedadvisor", label: "Trusted Advisor", category: "Monitoring", color: "#E7157B", iconUrl: "https://icon.icepanel.io/AWS/svg/Management-Governance/Trusted-Advisor.svg" },
   // AI/ML
-  { id: "sagemaker", label: "SageMaker", category: "AI/ML", color: "#01A88D", emoji: "🤖" },
-  { id: "rekognition", label: "Rekognition", category: "AI/ML", color: "#01A88D", emoji: "👁️" },
-  { id: "bedrock", label: "Bedrock", category: "AI/ML", color: "#01A88D", emoji: "🧠" },
+  { id: "sagemaker", label: "SageMaker", category: "AI/ML", color: "#01A88D", iconUrl: "https://icon.icepanel.io/AWS/svg/Machine-Learning/SageMaker.svg" },
+  { id: "rekognition", label: "Rekognition", category: "AI/ML", color: "#01A88D", iconUrl: "https://icon.icepanel.io/AWS/svg/Machine-Learning/Rekognition.svg" },
+  { id: "bedrock", label: "Bedrock", category: "AI/ML", color: "#01A88D", iconUrl: "https://icon.icepanel.io/AWS/svg/Machine-Learning/Bedrock.svg" },
+  { id: "comprehend", label: "Comprehend", category: "AI/ML", color: "#01A88D", iconUrl: "https://icon.icepanel.io/AWS/svg/Machine-Learning/Comprehend.svg" },
+  { id: "textract", label: "Textract", category: "AI/ML", color: "#01A88D", iconUrl: "https://icon.icepanel.io/AWS/svg/Machine-Learning/Textract.svg" },
+  { id: "polly", label: "Polly", category: "AI/ML", color: "#01A88D", iconUrl: "https://icon.icepanel.io/AWS/svg/Machine-Learning/Polly.svg" },
+  // DevOps
+  { id: "codepipeline", label: "CodePipeline", category: "DevOps", color: "#C7131F", iconUrl: "https://icon.icepanel.io/AWS/svg/Developer-Tools/CodePipeline.svg" },
+  { id: "codebuild", label: "CodeBuild", category: "DevOps", color: "#C7131F", iconUrl: "https://icon.icepanel.io/AWS/svg/Developer-Tools/CodeBuild.svg" },
+  { id: "codecommit", label: "CodeCommit", category: "DevOps", color: "#C7131F", iconUrl: "https://icon.icepanel.io/AWS/svg/Developer-Tools/CodeCommit.svg" },
+  { id: "codedeploy", label: "CodeDeploy", category: "DevOps", color: "#C7131F", iconUrl: "https://icon.icepanel.io/AWS/svg/Developer-Tools/CodeDeploy.svg" },
+  { id: "cloudformation", label: "CloudFormation", category: "DevOps", color: "#C7131F", iconUrl: "https://icon.icepanel.io/AWS/svg/Management-Governance/CloudFormation.svg" },
+  { id: "cdk", label: "CDK", category: "DevOps", color: "#C7131F", iconUrl: "https://icon.icepanel.io/AWS/svg/Developer-Tools/Cloud-Development-Kit.svg" },
 ];
 
 const CATEGORIES = Array.from(new Set(AWS_SERVICES.map(s => s.category)));
@@ -94,16 +122,17 @@ const CATEGORY_COLORS: Record<string, string> = {
   Security: "#DD344C",
   Monitoring: "#E7157B",
   "AI/ML": "#01A88D",
+  DevOps: "#C7131F",
 };
 
-// ─── Custom AWS Node ──────────────────────────────────────────────────────────
-function AwsServiceNode({ data }: { data: { label: string; emoji: string; color: string; category: string } }) {
+// ─── Custom AWS Node with official SVG icon ───────────────────────────────────
+function AwsServiceNode({ data }: { data: { label: string; iconUrl: string; color: string; category: string } }) {
   return (
     <div
       className="relative flex flex-col items-center justify-center rounded-xl border-2 shadow-lg cursor-grab active:cursor-grabbing select-none"
       style={{
         width: 100,
-        minHeight: 80,
+        minHeight: 88,
         background: `${data.color}18`,
         borderColor: data.color,
         padding: "8px 6px",
@@ -113,7 +142,12 @@ function AwsServiceNode({ data }: { data: { label: string; emoji: string; color:
       <Handle type="source" position={Position.Bottom} style={{ background: data.color, width: 8, height: 8 }} />
       <Handle type="target" position={Position.Left} style={{ background: data.color, width: 8, height: 8 }} />
       <Handle type="source" position={Position.Right} style={{ background: data.color, width: 8, height: 8 }} />
-      <div className="text-2xl mb-1 leading-none">{data.emoji}</div>
+      <img
+        src={data.iconUrl}
+        alt={data.label}
+        className="w-9 h-9 mb-1 object-contain"
+        onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+      />
       <div className="text-[10px] font-bold text-center leading-tight" style={{ color: data.color }}>
         {data.label}
       </div>
@@ -147,7 +181,8 @@ export default function DiagramBuilder() {
   const [diagramName, setDiagramName] = useState("Untitled Diagram");
   const [currentDiagramId, setCurrentDiagramId] = useState<number | null>(null);
   const [paletteOpen, setPaletteOpen] = useState(true);
-  const [activeCategory, setActiveCategory] = useState("Compute");
+  const [activeCategory, setActiveCategory] = useState<string | null>(null); // null = show search results
+  const [searchQuery, setSearchQuery] = useState("");
   const [loadDialogOpen, setLoadDialogOpen] = useState(false);
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const nodeIdCounter = useRef(1);
@@ -168,10 +203,6 @@ export default function DiagramBuilder() {
       toast.success("Diagram deleted");
     },
   });
-  const getDiagramQuery = trpc.diagram.get.useQuery(
-    { id: currentDiagramId! },
-    { enabled: false }
-  );
 
   const onConnect = useCallback(
     (params: Connection) => setEdges((eds) => addEdge({ ...params, animated: true, style: { stroke: "#6366f1", strokeWidth: 2 } }, eds)),
@@ -185,7 +216,7 @@ export default function DiagramBuilder() {
         id,
         type: "awsService",
         position: { x: 200 + Math.random() * 200, y: 100 + Math.random() * 200 },
-        data: { label: service.label, emoji: service.emoji, color: service.color, category: service.category },
+        data: { label: service.label, iconUrl: service.iconUrl, color: service.color, category: service.category },
       };
       setNodes((nds) => [...nds, newNode]);
     },
@@ -223,13 +254,25 @@ export default function DiagramBuilder() {
     setEdges([]);
   };
 
-  const filteredServices = AWS_SERVICES.filter(s => s.category === activeCategory);
+  // Filter services: search query overrides category filter
+  const filteredServices = useMemo(() => {
+    if (searchQuery.trim()) {
+      return AWS_SERVICES.filter(s =>
+        s.label.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        s.category.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    }
+    if (activeCategory) {
+      return AWS_SERVICES.filter(s => s.category === activeCategory);
+    }
+    return AWS_SERVICES;
+  }, [searchQuery, activeCategory]);
 
   return (
     <div className="flex h-screen bg-gray-950 text-white overflow-hidden" style={{ height: "calc(100vh - 64px)" }}>
       {/* ── Service Palette ── */}
       <div
-        className={`flex flex-col border-r border-gray-800 bg-gray-900 transition-all duration-300 ${paletteOpen ? "w-56" : "w-10"}`}
+        className={`flex flex-col border-r border-gray-800 bg-gray-900 transition-all duration-300 ${paletteOpen ? "w-60" : "w-10"}`}
       >
         <div className="flex items-center justify-between p-2 border-b border-gray-800">
           {paletteOpen && <span className="text-xs font-bold text-gray-300 uppercase tracking-wider">AWS Services</span>}
@@ -243,30 +286,82 @@ export default function DiagramBuilder() {
 
         {paletteOpen && (
           <>
-            {/* Category tabs */}
-            <div className="flex flex-col gap-0.5 p-1 border-b border-gray-800 overflow-y-auto max-h-40">
-              {CATEGORIES.map(cat => (
-                <button
-                  key={cat}
-                  onClick={() => setActiveCategory(cat)}
-                  className={`text-left text-xs px-2 py-1 rounded transition-colors ${activeCategory === cat ? "text-white font-semibold" : "text-gray-400 hover:text-gray-200 hover:bg-gray-800"}`}
-                  style={activeCategory === cat ? { background: `${CATEGORY_COLORS[cat]}30`, color: CATEGORY_COLORS[cat] } : {}}
-                >
-                  {cat}
-                </button>
-              ))}
+            {/* Search bar */}
+            <div className="p-2 border-b border-gray-800">
+              <div className="relative">
+                <Search size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={e => {
+                    setSearchQuery(e.target.value);
+                    if (e.target.value) setActiveCategory(null);
+                  }}
+                  placeholder="Search services..."
+                  className="w-full bg-gray-800 border border-gray-700 rounded text-xs text-gray-200 placeholder-gray-500 pl-6 pr-6 py-1.5 focus:outline-none focus:border-indigo-500"
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery("")}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white"
+                  >
+                    <X size={10} />
+                  </button>
+                )}
+              </div>
             </div>
 
-            {/* Service icons */}
-            <div className="flex-1 overflow-y-auto p-2 space-y-1">
+            {/* Category tabs — only show when not searching */}
+            {!searchQuery && (
+              <div className="flex flex-col gap-0.5 p-1 border-b border-gray-800 overflow-y-auto max-h-44">
+                <button
+                  onClick={() => setActiveCategory(null)}
+                  className={`text-left text-xs px-2 py-1 rounded transition-colors ${activeCategory === null ? "bg-gray-700 text-white font-semibold" : "text-gray-400 hover:text-gray-200 hover:bg-gray-800"}`}
+                >
+                  All Services ({AWS_SERVICES.length})
+                </button>
+                {CATEGORIES.map(cat => (
+                  <button
+                    key={cat}
+                    onClick={() => setActiveCategory(cat)}
+                    className={`text-left text-xs px-2 py-1 rounded transition-colors ${activeCategory === cat ? "text-white font-semibold" : "text-gray-400 hover:text-gray-200 hover:bg-gray-800"}`}
+                    style={activeCategory === cat ? { background: `${CATEGORY_COLORS[cat]}30`, color: CATEGORY_COLORS[cat] } : {}}
+                  >
+                    {cat} ({AWS_SERVICES.filter(s => s.category === cat).length})
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Service icons list */}
+            <div className="flex-1 overflow-y-auto p-2 space-y-0.5">
+              {searchQuery && (
+                <p className="text-xs text-gray-500 px-1 pb-1">
+                  {filteredServices.length} result{filteredServices.length !== 1 ? "s" : ""}
+                </p>
+              )}
+              {filteredServices.length === 0 && (
+                <p className="text-xs text-gray-500 text-center py-4">No services found</p>
+              )}
               {filteredServices.map(service => (
                 <button
                   key={service.id}
                   onClick={() => addServiceNode(service)}
                   className="w-full flex items-center gap-2 px-2 py-1.5 rounded text-left text-xs hover:bg-gray-800 transition-colors group"
+                  title={`Add ${service.label} to canvas`}
                 >
-                  <span className="text-base leading-none w-5 text-center">{service.emoji}</span>
-                  <span className="text-gray-300 group-hover:text-white truncate">{service.label}</span>
+                  <img
+                    src={service.iconUrl}
+                    alt={service.label}
+                    className="w-5 h-5 object-contain flex-shrink-0"
+                    onError={(e) => { (e.target as HTMLImageElement).style.opacity = "0.3"; }}
+                  />
+                  <div className="flex flex-col min-w-0">
+                    <span className="text-gray-300 group-hover:text-white truncate leading-tight">{service.label}</span>
+                    {(searchQuery || activeCategory === null) && (
+                      <span className="text-gray-600 text-[9px] truncate">{service.category}</span>
+                    )}
+                  </div>
                 </button>
               ))}
             </div>
@@ -352,7 +447,7 @@ export default function DiagramBuilder() {
             <Panel position="top-center">
               {nodes.length === 0 && (
                 <div className="text-gray-500 text-sm bg-gray-900/80 px-4 py-2 rounded-full border border-gray-700 mt-4">
-                  Click a service in the palette to add it to the canvas
+                  Search or browse services in the palette, then click to add them to the canvas
                 </div>
               )}
             </Panel>

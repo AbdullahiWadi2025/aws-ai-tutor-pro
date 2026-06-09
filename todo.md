@@ -407,3 +407,12 @@
 - [x] Save/load diagrams per user with named diagrams list
 - [x] Add to sidebar navigation and Dashboard quick-access card
 - [x] Test full flow and save checkpoint
+
+## Feature: Diagram Builder — Search Bar + Official AWS SVG Icons
+- [x] Add search bar to Diagram Builder palette (filters by service name or category)
+- [x] Replace emoji icons with official AWS SVG icons from icon.icepanel.io CDN
+- [x] Expand service list to 55+ services across 9 categories (added DevOps: CodePipeline, CodeBuild, CodeCommit, CodeDeploy, CloudFormation, CDK)
+- [x] Add "All Services" filter option in category list
+- [x] Show service count per category in palette
+- [x] Show category label under service name when browsing all or searching
+- [x] TypeScript check passed (0 errors)
