@@ -116,11 +116,19 @@ LAYOUT RULES (critical — follow exactly):
 - Use a LEFT-TO-RIGHT horizontal flow. The first node (e.g. User or Internet) starts at x=80, y=300.
 - Each subsequent node in the main flow moves RIGHT by 200px: x=80, x=280, x=480, x=680, x=880, x=1080.
 - Keep all nodes on the same horizontal center line (y=300) unless branching.
-- For branching (e.g. a node connects to two children), place children above and below the center: y=150 and y=450.
+- For branching (e.g. a node connects to two children), place children ABOVE (y=150) and BELOW (y=450) the center line at the SAME x position.
 - NEVER stack nodes vertically with the same x value unless they are side branches.
 - Minimum horizontal gap between nodes: 180px. Minimum vertical gap: 140px.
 - Keep x between 80 and 1200, y between 80 and 600.
 - If the description mentions "Users" or "clients", use serviceId "user" as the first node.
+
+EDGE RULES (critical — follow exactly):
+- Only draw edges that represent DIRECT data flow or requests between two services.
+- Maximum edges per node: 3. No node should have more than 3 connections total.
+- Monitoring/observability services (cloudwatch, cloudtrail, xray, config) must connect to AT MOST ONE node — the most important one. Do NOT draw a monitoring edge to every node.
+- Security services (iam, waf, shield, guardduty) should NOT have any edges unless they are explicitly part of the request flow.
+- Do NOT add edge labels unless the label is essential and unique (e.g. "HTTPS", "SQL"). Never use generic labels like "Monitors", "Manages", "Connects to".
+- Keep total edge count low: aim for (number of nodes - 1) edges for a clean linear flow, max (number of nodes + 2) for branching.
 - Edges reference node array indices (0-based). Do not create self-loops.
 - Return ONLY the raw JSON object. No markdown fences, no explanation text.`;
 
