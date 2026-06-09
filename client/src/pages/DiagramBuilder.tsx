@@ -147,12 +147,14 @@ function AwsServiceNode({ data }: { data: { label: string; iconUrl: string; colo
       <Handle type="target" id="left-t" position={Position.Left} style={{ background: data.color, width: 8, height: 8, opacity: 0, pointerEvents: "all" }} />
       <Handle type="source" id="right-s" position={Position.Right} style={{ background: data.color, width: 8, height: 8 }} />
       <Handle type="target" id="right-t" position={Position.Right} style={{ background: data.color, width: 8, height: 8, opacity: 0, pointerEvents: "all" }} />
-      <img
-        src={data.iconUrl}
-        alt={data.label}
-        className="w-9 h-9 mb-1 object-contain"
-        onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
-      />
+      <div className="flex items-center justify-center rounded-lg mb-1" style={{ background: "white", width: 40, height: 40, padding: 4 }}>
+        <img
+          src={data.iconUrl}
+          alt={data.label}
+          className="w-8 h-8 object-contain"
+          onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+        />
+      </div>
       <div className="text-[10px] font-bold text-center leading-tight" style={{ color: data.color }}>
         {data.label}
       </div>
@@ -355,12 +357,14 @@ export default function DiagramBuilder() {
                   className="w-full flex items-center gap-2 px-2 py-1.5 rounded text-left text-xs hover:bg-gray-800 transition-colors group"
                   title={`Add ${service.label} to canvas`}
                 >
-                  <img
-                    src={service.iconUrl}
-                    alt={service.label}
-                    className="w-5 h-5 object-contain flex-shrink-0"
-                    onError={(e) => { (e.target as HTMLImageElement).style.opacity = "0.3"; }}
-                  />
+                  <div className="flex items-center justify-center rounded flex-shrink-0" style={{ background: "white", width: 22, height: 22, padding: 2 }}>
+                    <img
+                      src={service.iconUrl}
+                      alt={service.label}
+                      className="w-full h-full object-contain"
+                      onError={(e) => { (e.target as HTMLImageElement).style.opacity = "0.3"; }}
+                    />
+                  </div>
                   <div className="flex flex-col min-w-0">
                     <span className="text-gray-300 group-hover:text-white truncate leading-tight">{service.label}</span>
                     {(searchQuery || activeCategory === null) && (
