@@ -440,15 +440,17 @@ export default function DiagramBuilder() {
             onConnect={onConnect}
             nodeTypes={nodeTypes}
             fitView
-            style={{ background: "#0f172a" }}
-            defaultEdgeOptions={{ animated: true, style: { stroke: "#6366f1", strokeWidth: 2 } }}
+            style={{ background: "#1e2433" }}
+            defaultEdgeOptions={{ animated: true, style: { stroke: "#818cf8", strokeWidth: 2 } }}
           >
             <Controls className="!bg-gray-800 !border-gray-700 !text-white" />
             <MiniMap
-              style={{ background: "#1e293b", border: "1px solid #374151" }}
-              nodeColor={(node) => (node.data as any)?.color ?? "#6366f1"}
+              position="bottom-right"
+              style={{ background: "#111827", border: "1px solid #374151", borderRadius: "8px" }}
+              maskColor="rgba(0,0,0,0.4)"
+              nodeColor={(node) => (node.data as any)?.color ?? "#818cf8"}
             />
-            <Background variant={BackgroundVariant.Dots} gap={20} size={1} color="#1e293b" />
+            <Background variant={BackgroundVariant.Dots} gap={24} size={1.2} color="#2d3748" />
             <Panel position="top-center">
               {nodes.length === 0 && (
                 <div className="text-gray-500 text-sm bg-gray-900/80 px-4 py-2 rounded-full border border-gray-700 mt-4">
