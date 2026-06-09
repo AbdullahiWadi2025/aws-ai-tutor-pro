@@ -313,8 +313,9 @@ export default function DiagramBuilder() {
           source: newNodes[e.from].id,
           target: newNodes[e.to].id,
           label: e.label || undefined,
-          animated: true,
+          animated: false,
           style: { stroke: "#818cf8", strokeWidth: 2 },
+          markerEnd: { type: "arrowclosed" as any, color: "#818cf8", width: 18, height: 18 },
         }));
 
       setNodes(newNodes);
@@ -333,7 +334,12 @@ export default function DiagramBuilder() {
   });
 
   const onConnect = useCallback(
-    (params: Connection) => setEdges((eds) => addEdge({ ...params, animated: true, style: { stroke: "#6366f1", strokeWidth: 2 } }, eds)),
+    (params: Connection) => setEdges((eds) => addEdge({
+      ...params,
+      animated: false,
+      style: { stroke: "#818cf8", strokeWidth: 2 },
+      markerEnd: { type: "arrowclosed" as any, color: "#818cf8", width: 18, height: 18 },
+    }, eds)),
     [setEdges]
   );
 
@@ -619,7 +625,11 @@ export default function DiagramBuilder() {
             nodeTypes={nodeTypes}
             fitView
             style={{ background: "#1e2433" }}
-            defaultEdgeOptions={{ animated: true, style: { stroke: "#818cf8", strokeWidth: 2 } }}
+            defaultEdgeOptions={{
+              animated: false,
+              style: { stroke: "#818cf8", strokeWidth: 2 },
+              markerEnd: { type: "arrowclosed" as any, color: "#818cf8", width: 18, height: 18 },
+            }}
           >
             <Controls className="!bg-gray-800 !border-gray-700 !text-white" />
             <MiniMap
