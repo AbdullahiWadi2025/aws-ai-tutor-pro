@@ -46,6 +46,11 @@ import {
 
 // ─── Official AWS SVG icon URLs from icepanel.io (official AWS icon set) ───────
 const AWS_SERVICES = [
+  // General
+  { id: "user", label: "User", category: "General", color: "#64748b", iconUrl: "" },
+  { id: "internet", label: "Internet", category: "General", color: "#64748b", iconUrl: "" },
+  { id: "mobile", label: "Mobile User", category: "General", color: "#64748b", iconUrl: "" },
+  { id: "browser", label: "Browser", category: "General", color: "#64748b", iconUrl: "" },
   // Compute
   { id: "ec2", label: "EC2", category: "Compute", color: "#FF9900", iconUrl: "https://icon.icepanel.io/AWS/svg/Compute/EC2.svg" },
   { id: "lambda", label: "Lambda", category: "Compute", color: "#FF9900", iconUrl: "https://icon.icepanel.io/AWS/svg/Compute/Lambda.svg" },
@@ -117,6 +122,7 @@ const AWS_SERVICES = [
 
 const CATEGORIES = Array.from(new Set(AWS_SERVICES.map(s => s.category)));
 const CATEGORY_COLORS: Record<string, string> = {
+  General: "#64748b",
   Compute: "#FF9900",
   Storage: "#3F8624",
   Database: "#2E73B8",
@@ -127,6 +133,72 @@ const CATEGORY_COLORS: Record<string, string> = {
   "AI/ML": "#01A88D",
   DevOps: "#C7131F",
 };
+
+// SVG icons for general nodes (rendered inline, no external URL needed)
+const GENERAL_ICONS: Record<string, React.ReactNode> = {
+  user: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="w-7 h-7">
+      <circle cx="12" cy="8" r="4" />
+      <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
+    </svg>
+  ),
+  internet: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="w-7 h-7">
+      <circle cx="12" cy="12" r="9" />
+      <path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+    </svg>
+  ),
+  mobile: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="w-7 h-7">
+      <rect x="5" y="2" width="14" height="20" rx="2" />
+      <circle cx="12" cy="17" r="1" />
+    </svg>
+  ),
+  browser: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="w-7 h-7">
+      <rect x="2" y="3" width="20" height="18" rx="2" />
+      <path d="M2 8h20" />
+      <circle cx="6" cy="5.5" r="0.8" fill="#64748b" />
+      <circle cx="9" cy="5.5" r="0.8" fill="#64748b" />
+    </svg>
+  ),
+};
+
+// ─── General (User/Internet) Node ────────────────────────────────────────────
+function GeneralNode({ data }: { data: { label: string; iconUrl: string; color: string; category: string } }) {
+  const icon = GENERAL_ICONS[data.iconUrl] ?? GENERAL_ICONS["user"];
+  return (
+    <div
+      className="relative flex flex-col items-center justify-center rounded-xl border-2 shadow-lg select-none"
+      style={{
+        width: 90,
+        minHeight: 80,
+        background: "#1e293b",
+        borderColor: "#475569",
+        borderStyle: "dashed",
+        padding: "8px 6px",
+        cursor: "grab",
+      }}
+      onMouseDown={(e) => { (e.currentTarget as HTMLDivElement).style.cursor = "grabbing"; }}
+      onMouseUp={(e) => { (e.currentTarget as HTMLDivElement).style.cursor = "grab"; }}
+    >
+      <Handle type="source" id="top-s" position={Position.Top} style={{ background: "#64748b", width: 8, height: 8 }} />
+      <Handle type="target" id="top-t" position={Position.Top} style={{ background: "#64748b", width: 8, height: 8, opacity: 0, pointerEvents: "all" }} />
+      <Handle type="source" id="bottom-s" position={Position.Bottom} style={{ background: "#64748b", width: 8, height: 8 }} />
+      <Handle type="target" id="bottom-t" position={Position.Bottom} style={{ background: "#64748b", width: 8, height: 8, opacity: 0, pointerEvents: "all" }} />
+      <Handle type="source" id="left-s" position={Position.Left} style={{ background: "#64748b", width: 8, height: 8 }} />
+      <Handle type="target" id="left-t" position={Position.Left} style={{ background: "#64748b", width: 8, height: 8, opacity: 0, pointerEvents: "all" }} />
+      <Handle type="source" id="right-s" position={Position.Right} style={{ background: "#64748b", width: 8, height: 8 }} />
+      <Handle type="target" id="right-t" position={Position.Right} style={{ background: "#64748b", width: 8, height: 8, opacity: 0, pointerEvents: "all" }} />
+      <div className="flex items-center justify-center mb-1" style={{ width: 36, height: 36 }}>
+        {icon}
+      </div>
+      <div className="text-[10px] font-bold text-center leading-tight text-slate-300">
+        {data.label}
+      </div>
+    </div>
+  );
+}
 
 // ─── Custom AWS Node with official SVG icon ───────────────────────────────────
 function AwsServiceNode({ data }: { data: { label: string; iconUrl: string; color: string; category: string } }) {
@@ -184,6 +256,7 @@ function TextLabelNode({ data }: { data: { label: string } }) {
 
 const nodeTypes: NodeTypes = {
   awsService: AwsServiceNode,
+  generalNode: GeneralNode,
   textLabel: TextLabelNode,
 };
 
@@ -218,17 +291,17 @@ export default function DiagramBuilder() {
       const newNodes: Node[] = data.nodes.map((n, i) => {
         const service = AWS_SERVICES.find(s => s.id === n.serviceId);
         const id = `ai-node-${nodeIdCounter.current++}`;
+        const isGeneral = service?.category === "General";
         return {
           id,
-          type: "awsService",
+          type: isGeneral ? "generalNode" : "awsService",
           position: { x: n.x, y: n.y },
           data: {
             label: n.label || service?.label || n.serviceId,
-            iconUrl: service?.iconUrl ?? `https://icon.icepanel.io/AWS/svg/Compute/EC2.svg`,
+            iconUrl: isGeneral ? n.serviceId : (service?.iconUrl ?? `https://icon.icepanel.io/AWS/svg/Compute/EC2.svg`),
             color: service?.color ?? "#FF9900",
             category: service?.category ?? "AWS",
           },
-          // Store index so we can map edges
           _aiIndex: i,
         } as Node & { _aiIndex: number };
       });
@@ -267,11 +340,13 @@ export default function DiagramBuilder() {
   const addServiceNode = useCallback(
     (service: typeof AWS_SERVICES[0]) => {
       const id = `node-${nodeIdCounter.current++}`;
+      const isGeneral = service.category === "General";
       const newNode: Node = {
         id,
-        type: "awsService",
+        type: isGeneral ? "generalNode" : "awsService",
         position: { x: 200 + Math.random() * 200, y: 100 + Math.random() * 200 },
-        data: { label: service.label, iconUrl: service.iconUrl, color: service.color, category: service.category },
+        // For general nodes, iconUrl stores the serviceId so GeneralNode can look up the SVG
+        data: { label: service.label, iconUrl: isGeneral ? service.id : service.iconUrl, color: service.color, category: service.category },
       };
       setNodes((nds) => [...nds, newNode]);
     },
@@ -405,14 +480,20 @@ export default function DiagramBuilder() {
                   className="w-full flex items-center gap-2 px-2 py-1.5 rounded text-left text-xs hover:bg-gray-800 transition-colors group"
                   title={`Add ${service.label} to canvas`}
                 >
-                  <div className="flex items-center justify-center rounded flex-shrink-0" style={{ background: "white", width: 22, height: 22, padding: 2 }}>
-                    <img
-                      src={service.iconUrl}
-                      alt={service.label}
-                      className="w-full h-full object-contain"
-                      onError={(e) => { (e.target as HTMLImageElement).style.opacity = "0.3"; }}
-                    />
-                  </div>
+                  {service.category === "General" ? (
+                    <div className="flex items-center justify-center flex-shrink-0" style={{ width: 22, height: 22 }}>
+                      {GENERAL_ICONS[service.id]}
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-center rounded flex-shrink-0" style={{ background: "white", width: 22, height: 22, padding: 2 }}>
+                      <img
+                        src={service.iconUrl}
+                        alt={service.label}
+                        className="w-full h-full object-contain"
+                        onError={(e) => { (e.target as HTMLImageElement).style.opacity = "0.3"; }}
+                      />
+                    </div>
+                  )}
                   <div className="flex flex-col min-w-0">
                     <span className="text-gray-300 group-hover:text-white truncate leading-tight">{service.label}</span>
                     {(searchQuery || activeCategory === null) && (

@@ -103,7 +103,7 @@ export const diagramRouter = router({
       const systemPrompt = `You are an AWS architecture diagram generator. Given a plain-text description of an AWS architecture, return ONLY a valid JSON object (no markdown, no explanation) with this exact shape:
 {
   "nodes": [
-    { "serviceId": "<one of the allowed service IDs>", "label": "<display label>", "x": <number 0-1200>, "y": <number 0-700> }
+    { "serviceId": "<one of the allowed service IDs>", "label": "<display label>", "x": <number>, "y": <number> }
   ],
   "edges": [
     { "from": <node index 0-based>, "to": <node index 0-based>, "label": "<optional short label or empty string>" }
@@ -111,10 +111,16 @@ export const diagramRouter = router({
 }
 
 Allowed serviceId values: ${AWS_SERVICE_IDS.join(", ")}.
-Rules:
-- Only use serviceId values from the allowed list above. If a service is not in the list, pick the closest match.
-- Position nodes in a logical left-to-right or top-to-bottom flow. Spread them out (min 160px apart).
-- Keep x between 50 and 1200, y between 50 and 700.
+
+LAYOUT RULES (critical — follow exactly):
+- Use a LEFT-TO-RIGHT horizontal flow. The first node (e.g. User or Internet) starts at x=80, y=300.
+- Each subsequent node in the main flow moves RIGHT by 200px: x=80, x=280, x=480, x=680, x=880, x=1080.
+- Keep all nodes on the same horizontal center line (y=300) unless branching.
+- For branching (e.g. a node connects to two children), place children above and below the center: y=150 and y=450.
+- NEVER stack nodes vertically with the same x value unless they are side branches.
+- Minimum horizontal gap between nodes: 180px. Minimum vertical gap: 140px.
+- Keep x between 80 and 1200, y between 80 and 600.
+- If the description mentions "Users" or "clients", use serviceId "user" as the first node.
 - Edges reference node array indices (0-based). Do not create self-loops.
 - Return ONLY the raw JSON object. No markdown fences, no explanation text.`;
 
