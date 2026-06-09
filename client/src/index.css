@@ -1,4 +1,13 @@
 @import "tailwindcss";
+
+/* Fix ReactFlow node cursor — prevent white box cursor on drag */
+.react-flow__node {
+  cursor: grab !important;
+}
+.react-flow__node:active,
+.react-flow__node.dragging {
+  cursor: grabbing !important;
+}
 @import "tw-animate-css";
 
 @custom-variant dark (&:is(.dark *));

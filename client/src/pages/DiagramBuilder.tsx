@@ -129,14 +129,17 @@ const CATEGORY_COLORS: Record<string, string> = {
 function AwsServiceNode({ data }: { data: { label: string; iconUrl: string; color: string; category: string } }) {
   return (
     <div
-      className="relative flex flex-col items-center justify-center rounded-xl border-2 shadow-lg cursor-grab active:cursor-grabbing select-none"
+      className="relative flex flex-col items-center justify-center rounded-xl border-2 shadow-lg select-none"
       style={{
         width: 100,
         minHeight: 88,
         background: `${data.color}18`,
         borderColor: data.color,
         padding: "8px 6px",
+        cursor: "grab",
       }}
+      onMouseDown={(e) => { (e.currentTarget as HTMLDivElement).style.cursor = "grabbing"; }}
+      onMouseUp={(e) => { (e.currentTarget as HTMLDivElement).style.cursor = "grab"; }}
     >
       {/* Each side has both a source and target handle so connections work in any direction */}
       <Handle type="source" id="top-s" position={Position.Top} style={{ background: data.color, width: 8, height: 8 }} />
