@@ -4,6 +4,7 @@ import { TRPCError } from "@trpc/server";
 import { getDb } from "./db";
 import { diagrams } from "../drizzle/schema";
 import { eq, and, desc } from "drizzle-orm";
+import { invokeLLM } from "./_core/llm";
 
 export const diagramRouter = router({
   // List all diagrams for the current user
@@ -81,6 +82,69 @@ export const diagramRouter = router({
         });
         return { id: (result as any).insertId as number };
       }
+    }),
+
+  // Generate diagram from plain-text description using AI
+  generateFromDescription: protectedProcedure
+    .input(z.object({ description: z.string().min(5).max(2000) }))
+    .mutation(async ({ input }) => {
+      const AWS_SERVICE_IDS = [
+        "ec2","lambda","ecs","eks","beanstalk","fargate","lightsail","batch",
+        "s3","ebs","efs","glacier","fsx","storagegateway",
+        "rds","dynamodb","elasticache","aurora","redshift","neptune","documentdb",
+        "vpc","cloudfront","route53","alb","apigateway","directconnect","transitgateway",
+        "sqs","sns","kinesis","eventbridge","mq","stepfunctions",
+        "iam","cognito","waf","kms","shield","secretsmanager","guardduty",
+        "cloudwatch","cloudtrail","xray","config","trustedadvisor",
+        "sagemaker","rekognition","bedrock","comprehend","textract","polly",
+        "codepipeline","codebuild","codecommit","codedeploy","cloudformation","cdk",
+      ];
+
+      const systemPrompt = `You are an AWS architecture diagram generator. Given a plain-text description of an AWS architecture, return ONLY a valid JSON object (no markdown, no explanation) with this exact shape:
+{
+  "nodes": [
+    { "serviceId": "<one of the allowed service IDs>", "label": "<display label>", "x": <number 0-1200>, "y": <number 0-700> }
+  ],
+  "edges": [
+    { "from": <node index 0-based>, "to": <node index 0-based>, "label": "<optional short label or empty string>" }
+  ]
+}
+
+Allowed serviceId values: ${AWS_SERVICE_IDS.join(", ")}.
+Rules:
+- Only use serviceId values from the allowed list above. If a service is not in the list, pick the closest match.
+- Position nodes in a logical left-to-right or top-to-bottom flow. Spread them out (min 160px apart).
+- Keep x between 50 and 1200, y between 50 and 700.
+- Edges reference node array indices (0-based). Do not create self-loops.
+- Return ONLY the raw JSON object. No markdown fences, no explanation text.`;
+
+      let raw: string;
+      try {
+        const response = await invokeLLM({
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: input.description },
+          ],
+        });
+        raw = (response.choices?.[0]?.message?.content as string) ?? "";
+      } catch (err) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "AI service unavailable" });
+      }
+
+      // Strip markdown fences if present
+      const cleaned = raw.replace(/^```[\w]*\n?/m, "").replace(/```$/m, "").trim();
+      let parsed: { nodes: { serviceId: string; label: string; x: number; y: number }[]; edges: { from: number; to: number; label: string }[] };
+      try {
+        parsed = JSON.parse(cleaned);
+      } catch {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "AI returned invalid JSON. Please try rephrasing your description." });
+      }
+
+      if (!Array.isArray(parsed.nodes) || !Array.isArray(parsed.edges)) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "AI response missing nodes or edges." });
+      }
+
+      return parsed;
     }),
 
   // Delete a diagram

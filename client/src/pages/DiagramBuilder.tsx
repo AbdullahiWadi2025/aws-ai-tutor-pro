@@ -39,6 +39,9 @@ import {
   ChevronLeft,
   Search,
   X,
+  Sparkles,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 
 // ─── Official AWS SVG icon URLs from icepanel.io (official AWS icon set) ───────
@@ -194,6 +197,8 @@ export default function DiagramBuilder() {
   const [activeCategory, setActiveCategory] = useState<string | null>(null); // null = show search results
   const [searchQuery, setSearchQuery] = useState("");
   const [loadDialogOpen, setLoadDialogOpen] = useState(false);
+  const [aiPanelOpen, setAiPanelOpen] = useState(false);
+  const [aiDescription, setAiDescription] = useState("");
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const nodeIdCounter = useRef(1);
 
@@ -207,6 +212,46 @@ export default function DiagramBuilder() {
     },
     onError: () => toast.error("Failed to save diagram"),
   });
+  const generateMutation = trpc.diagram.generateFromDescription.useMutation({
+    onSuccess: (data) => {
+      // Build React Flow nodes from AI response
+      const newNodes: Node[] = data.nodes.map((n, i) => {
+        const service = AWS_SERVICES.find(s => s.id === n.serviceId);
+        const id = `ai-node-${nodeIdCounter.current++}`;
+        return {
+          id,
+          type: "awsService",
+          position: { x: n.x, y: n.y },
+          data: {
+            label: n.label || service?.label || n.serviceId,
+            iconUrl: service?.iconUrl ?? `https://icon.icepanel.io/AWS/svg/Compute/EC2.svg`,
+            color: service?.color ?? "#FF9900",
+            category: service?.category ?? "AWS",
+          },
+          // Store index so we can map edges
+          _aiIndex: i,
+        } as Node & { _aiIndex: number };
+      });
+
+      const newEdges: Edge[] = data.edges
+        .filter(e => e.from !== e.to && e.from < newNodes.length && e.to < newNodes.length)
+        .map((e, i) => ({
+          id: `ai-edge-${i}`,
+          source: newNodes[e.from].id,
+          target: newNodes[e.to].id,
+          label: e.label || undefined,
+          animated: true,
+          style: { stroke: "#818cf8", strokeWidth: 2 },
+        }));
+
+      setNodes(newNodes);
+      setEdges(newEdges);
+      setAiPanelOpen(false);
+      toast.success(`Generated ${newNodes.length} services and ${newEdges.length} connections`);
+    },
+    onError: (err) => toast.error(err.message || "Failed to generate diagram"),
+  });
+
   const deleteMutation = trpc.diagram.delete.useMutation({
     onSuccess: () => {
       utils.diagram.list.invalidate();
@@ -434,8 +479,53 @@ export default function DiagramBuilder() {
           <div className="ml-auto flex items-center gap-2">
             {currentDiagramId && <Badge variant="outline" className="text-xs border-green-700 text-green-400">Saved</Badge>}
             <span className="text-xs text-gray-500">{nodes.length} nodes · {edges.length} connections</span>
+            <Button
+              size="sm"
+              onClick={() => setAiPanelOpen(p => !p)}
+              className="h-7 gap-1 text-xs bg-violet-600 hover:bg-violet-700 text-white"
+            >
+              <Sparkles size={12} />
+              AI Generate
+              {aiPanelOpen ? <ChevronUp size={10} /> : <ChevronDown size={10} />}
+            </Button>
           </div>
         </div>
+
+        {/* AI Description Panel */}
+        {aiPanelOpen && (
+          <div className="border-b border-gray-800 bg-gray-900/80 px-4 py-3 flex flex-col gap-2">
+            <div className="flex items-center gap-2 mb-1">
+              <Sparkles size={13} className="text-violet-400" />
+              <span className="text-xs font-semibold text-violet-300">Describe your architecture</span>
+              <span className="text-xs text-gray-500 ml-1">— AI will build the diagram automatically</span>
+            </div>
+            <div className="flex gap-2 items-start">
+              <textarea
+                value={aiDescription}
+                onChange={e => setAiDescription(e.target.value)}
+                placeholder="e.g. A web app with users hitting CloudFront, which routes to an ALB, two EC2 instances, an RDS database, and S3 for static assets"
+                className="flex-1 resize-none rounded-lg bg-gray-800 border border-gray-700 text-sm text-gray-200 placeholder-gray-500 px-3 py-2 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500"
+                rows={2}
+                disabled={generateMutation.isPending}
+              />
+              <Button
+                onClick={() => {
+                  if (aiDescription.trim().length < 5) { toast.error("Please enter a description first"); return; }
+                  generateMutation.mutate({ description: aiDescription.trim() });
+                }}
+                disabled={generateMutation.isPending || aiDescription.trim().length < 5}
+                className="h-auto py-2 px-4 bg-violet-600 hover:bg-violet-700 text-white text-xs font-semibold whitespace-nowrap"
+              >
+                {generateMutation.isPending ? (
+                  <span className="flex items-center gap-1.5"><span className="animate-spin inline-block w-3 h-3 border-2 border-white border-t-transparent rounded-full" />Generating...</span>
+                ) : (
+                  <span className="flex items-center gap-1"><Sparkles size={12} />Generate</span>
+                )}
+              </Button>
+            </div>
+            <p className="text-[10px] text-gray-600">Replaces the current canvas. Save your work first if needed.</p>
+          </div>
+        )}
 
         {/* React Flow Canvas */}
         <div className="flex-1" ref={reactFlowWrapper}>

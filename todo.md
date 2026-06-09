@@ -416,3 +416,8 @@
 - [x] Show service count per category in palette
 - [x] Show category label under service name when browsing all or searching
 - [x] TypeScript check passed (0 errors)
+
+## Feature: AI Describe-to-Diagram
+- [x] Add tRPC procedure diagram.generateFromDescription — calls LLM with user's plain-text architecture description, returns structured nodes/edges JSON
+- [x] Add AI description panel UI in DiagramBuilder (collapsible panel with textarea, Generate button, loading state)
+- [x] Place AI-generated nodes/edges onto the canvas automatically with logical positioning
