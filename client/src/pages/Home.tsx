@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { getLoginUrl } from "@/const";
 import { useLocation } from "wouter";
 import { useEffect, useState } from "react";
-import { BookOpen, Brain, BarChart3, Zap, Library, Gamepad2, ChevronDown, ChevronUp, Lock, Sparkles, Calendar, Clock, Target, Star, MessageSquarePlus, FlaskConical } from "lucide-react";
+import { BookOpen, Brain, BarChart3, Zap, Library, Gamepad2, ChevronDown, ChevronUp, Lock, Sparkles, Calendar, Clock, Target, Star, MessageSquarePlus, FlaskConical, Network, ArrowRight } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { TestimonialSubmitModal } from "@/components/TestimonialSubmitModal";
 
@@ -534,6 +534,98 @@ export default function Home() {
       <div id="study-plan-preview">
         <StudyPlanPreview />
       </div>
+
+      {/* AI Diagram Builder Highlight Section */}
+      <section className="py-20 px-4 sm:px-6 lg:px-8 relative overflow-hidden" style={{ background: "linear-gradient(135deg, #0d1520 0%, #0f1a2e 50%, #0d1520 100%)" }}>
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute top-1/2 right-1/4 -translate-y-1/2 w-[500px] h-[500px] bg-violet-600/8 rounded-full blur-3xl" />
+          <div className="absolute top-1/2 left-1/4 -translate-y-1/2 w-[400px] h-[400px] bg-blue-600/6 rounded-full blur-3xl" />
+        </div>
+        <div className="max-w-6xl mx-auto relative">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+            {/* Left: Text */}
+            <div className="space-y-6">
+              <div className="inline-flex items-center gap-2 bg-violet-500/10 border border-violet-500/30 rounded-full px-4 py-1.5">
+                <Sparkles className="w-4 h-4 text-violet-400" />
+                <span className="text-violet-400 text-sm font-mono font-semibold tracking-wider">NEW FEATURE</span>
+              </div>
+              <h2 className="text-4xl sm:text-5xl font-bold text-white leading-tight" style={{ fontFamily: "'Space Mono', monospace" }}>
+                AI Architecture
+                <span className="block" style={{ background: "linear-gradient(90deg, #818cf8, #a78bfa)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>Diagram Builder</span>
+              </h2>
+              <p className="text-lg text-slate-300 leading-relaxed">
+                Describe any AWS architecture in plain English — the AI instantly generates a clean diagram with official AWS icons, directional arrows, and proper service layout.
+              </p>
+              <ul className="space-y-3">
+                {[
+                  "Official AWS icons for 55+ services",
+                  "Drag, connect, and rearrange nodes freely",
+                  "Save and reload your diagrams anytime",
+                  "AI generates from plain-text descriptions",
+                ].map((item) => (
+                  <li key={item} className="flex items-center gap-3 text-slate-300">
+                    <span className="w-5 h-5 rounded-full bg-violet-500/20 border border-violet-500/40 flex items-center justify-center shrink-0">
+                      <span className="w-1.5 h-1.5 rounded-full bg-violet-400" />
+                    </span>
+                    {item}
+                  </li>
+                ))}
+              </ul>
+              <a href={getLoginUrl()}>
+                <Button className="gap-2 text-white font-semibold px-6 py-5 h-auto rounded-xl" style={{ background: "linear-gradient(135deg, #6366f1, #8b5cf6)" }}>
+                  <Network className="w-4 h-4" />
+                  Try Diagram Builder Free
+                  <ArrowRight className="w-4 h-4" />
+                </Button>
+              </a>
+            </div>
+            {/* Right: Visual demo card */}
+            <div className="relative">
+              <div className="absolute inset-0 bg-gradient-to-br from-violet-600/20 to-blue-600/10 rounded-2xl blur-2xl" />
+              <div className="relative bg-slate-900/80 border border-violet-500/20 rounded-2xl p-6 space-y-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-3 h-3 rounded-full bg-red-500/70" />
+                  <div className="w-3 h-3 rounded-full bg-yellow-500/70" />
+                  <div className="w-3 h-3 rounded-full bg-green-500/70" />
+                  <span className="ml-2 text-xs text-slate-500 font-mono">AI Diagram Builder</span>
+                </div>
+                {/* Fake prompt */}
+                <div className="bg-slate-800/80 border border-white/10 rounded-lg p-3">
+                  <p className="text-xs text-slate-400 font-mono mb-1">Describe your architecture...</p>
+                  <p className="text-sm text-slate-200 font-mono">&ldquo;Users → Route 53 → ALB → 2 EC2 instances → RDS database&rdquo;</p>
+                </div>
+                {/* Fake diagram nodes */}
+                <div className="relative h-48 bg-slate-950/60 rounded-xl border border-white/5 overflow-hidden">
+                  <div className="absolute inset-0 flex items-center justify-center gap-3 px-4">
+                    {[
+                      { label: "Users", color: "#6366f1", bg: "rgba(99,102,241,0.15)" },
+                      { label: "Route 53", color: "#8b5cf6", bg: "rgba(139,92,246,0.15)" },
+                      { label: "ALB", color: "#8b5cf6", bg: "rgba(139,92,246,0.15)" },
+                      { label: "EC2", color: "#f97316", bg: "rgba(249,115,22,0.15)" },
+                      { label: "RDS", color: "#06b6d4", bg: "rgba(6,182,212,0.15)" },
+                    ].map((node, i, arr) => (
+                      <div key={node.label} className="flex items-center gap-1.5">
+                        <div className="flex flex-col items-center gap-1">
+                          <div className="w-10 h-10 rounded-lg border flex items-center justify-center" style={{ background: node.bg, borderColor: node.color + "60" }}>
+                            <Network className="w-4 h-4" style={{ color: node.color }} />
+                          </div>
+                          <span className="text-[9px] font-mono" style={{ color: node.color }}>{node.label}</span>
+                        </div>
+                        {i < arr.length - 1 && (
+                          <ArrowRight className="w-3 h-3 text-violet-400/60 shrink-0 mb-3" />
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  <div className="absolute bottom-2 right-2">
+                    <span className="text-[9px] font-mono text-violet-400/60 bg-violet-500/10 px-2 py-0.5 rounded-full border border-violet-500/20">✦ AI Generated</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
 
       {/* Features Section */}
       <section className="py-20 px-4 sm:px-6 lg:px-8 bg-slate-800/50">
