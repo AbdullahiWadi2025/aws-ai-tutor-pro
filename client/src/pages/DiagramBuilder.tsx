@@ -342,14 +342,20 @@ export default function DiagramBuilder() {
           const dy = tgtY - srcY;
           let sourceHandle: string;
           let targetHandle: string;
-          if (Math.abs(dx) >= Math.abs(dy)) {
-            // Primarily horizontal
-            sourceHandle = dx >= 0 ? "right-s" : "left-s";
-            targetHandle = dx >= 0 ? "left-t" : "right-t";
+          // Use angle to determine best handle pair — avoids long routing across the canvas
+          const angle = Math.atan2(dy, dx) * (180 / Math.PI); // -180 to 180
+          if (angle > -45 && angle <= 45) {
+            // Mostly right
+            sourceHandle = "right-s"; targetHandle = "left-t";
+          } else if (angle > 45 && angle <= 135) {
+            // Mostly down
+            sourceHandle = "bottom-s"; targetHandle = "top-t";
+          } else if (angle > 135 || angle <= -135) {
+            // Mostly left
+            sourceHandle = "left-s"; targetHandle = "right-t";
           } else {
-            // Primarily vertical
-            sourceHandle = dy >= 0 ? "bottom-s" : "top-s";
-            targetHandle = dy >= 0 ? "top-t" : "bottom-t";
+            // Mostly up
+            sourceHandle = "top-s"; targetHandle = "bottom-t";
           }
           return {
             id: `ai-edge-${i}`,
