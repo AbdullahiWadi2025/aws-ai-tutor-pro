@@ -31,6 +31,16 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Save,
   FolderOpen,
   Trash2,
@@ -273,6 +283,7 @@ export default function DiagramBuilder() {
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const [, setLocation] = useLocation();
+  const [showLeaveDialog, setShowLeaveDialog] = useState(false);
   const [diagramName, setDiagramName] = useState("Untitled Diagram");
   const [currentDiagramId, setCurrentDiagramId] = useState<number | null>(null);
   const [paletteOpen, setPaletteOpen] = useState(true);
@@ -582,11 +593,32 @@ export default function DiagramBuilder() {
           <Button
             size="sm"
             variant="outline"
-            onClick={() => setLocation("/dashboard")}
+            onClick={() => nodes.length > 0 ? setShowLeaveDialog(true) : setLocation("/dashboard")}
             className="h-7 gap-1 text-xs border-gray-700 bg-transparent text-gray-400 hover:text-white hover:bg-gray-800 flex-shrink-0"
           >
             <ArrowLeft size={12} /> Dashboard
           </Button>
+          <AlertDialog open={showLeaveDialog} onOpenChange={setShowLeaveDialog}>
+            <AlertDialogContent className="bg-gray-900 border-gray-700 text-white">
+              <AlertDialogHeader>
+                <AlertDialogTitle>Leave Diagram Builder?</AlertDialogTitle>
+                <AlertDialogDescription className="text-gray-400">
+                  Any unsaved changes to your diagram will be lost. Make sure to save before leaving.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel className="bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700 hover:text-white">
+                  Stay
+                </AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={() => setLocation("/dashboard")}
+                  className="bg-red-600 hover:bg-red-700 text-white"
+                >
+                  Leave without saving
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
           <div className="w-px h-4 bg-gray-700 mx-1 flex-shrink-0" />
           <Input
             value={diagramName}
