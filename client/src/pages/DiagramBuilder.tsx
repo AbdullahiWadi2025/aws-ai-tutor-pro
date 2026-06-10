@@ -737,9 +737,9 @@ export default function DiagramBuilder() {
         {explainerOpen && explanation && (
           <div
             className="flex flex-col border-l border-gray-700 bg-gray-900"
-            style={{ width: 340, minWidth: 280, maxWidth: 400 }}
+            style={{ width: 340, minWidth: 280, maxWidth: 400, height: "100%", overflow: "hidden" }}
           >
-            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-700">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-700 flex-shrink-0">
               <div className="flex items-center gap-2">
                 <BookOpen size={14} className="text-emerald-400" />
                 <span className="text-sm font-semibold text-white">Architecture Explainer</span>
@@ -751,12 +751,12 @@ export default function DiagramBuilder() {
                 <X size={14} />
               </button>
             </div>
-            <ScrollArea className="flex-1 px-4 py-3">
-              <div className="prose prose-sm prose-invert max-w-none text-gray-200 text-xs leading-relaxed">
+            <div className="flex-1 overflow-y-auto px-4 py-3" style={{ minHeight: 0 }}>
+              <div className="prose prose-sm prose-invert max-w-none text-gray-200 text-xs leading-relaxed pb-16">
                 <Streamdown>{explanation}</Streamdown>
               </div>
-            </ScrollArea>
-            <div className="px-4 py-2 border-t border-gray-700">
+            </div>
+            <div className="px-4 py-2 border-t border-gray-700 flex-shrink-0">
               <button
                 onClick={handleExplain}
                 disabled={explainMutation.isPending}
