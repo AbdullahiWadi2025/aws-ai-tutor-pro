@@ -121,7 +121,7 @@ LAYOUT RULES (critical — follow exactly):
 - Minimum horizontal gap: 180px. Minimum vertical gap: 130px.
 - Keep x between 80 and 1200, y between 50 and 580.
 - If the description mentions "Users" or "clients", use serviceId "user" as the first node.
-- MONITORING/SIDE SERVICES PLACEMENT: Services like cloudwatch, cloudtrail, iam, waf, shield, guardduty are NOT part of the main flow. Place them BELOW the main flow at y=520, spaced 200px apart starting from x=300. They should never be placed at the end of the main flow line.
+- MONITORING/SIDE SERVICES PLACEMENT: Services like cloudwatch, cloudtrail, xray, config are NOT part of the main flow. Place them DIRECTLY BELOW the compute node they monitor (same x as the compute node, y = compute_node_y + 200). For example, if EC2 Instance 1 is at x=680, y=150, place CloudWatch at x=680, y=350. This ensures the monitoring arrow goes straight up/down without crossing other nodes. NEVER place monitoring services at the far left of the canvas or below networking nodes. They should never be placed at the end of the main flow line.
 
 EDGE RULES (critical — follow exactly):
 - Only draw edges that represent DIRECT data flow or requests between two services.
