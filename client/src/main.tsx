@@ -1,3 +1,15 @@
+// Suppress ResizeObserver benign loop warning (fired by React Flow on canvas resize)
+const _origError = window.onerror;
+window.onerror = (msg, ...args) => {
+  if (typeof msg === "string" && msg.includes("ResizeObserver loop")) return true;
+  return _origError ? (_origError as any)(msg, ...args) : false;
+};
+const _origConsoleError = console.error.bind(console);
+console.error = (...args: unknown[]) => {
+  if (typeof args[0] === "string" && args[0].includes("ResizeObserver loop")) return;
+  _origConsoleError(...args);
+};
+
 import { trpc } from "@/lib/trpc";
 import { UNAUTHED_ERR_MSG } from '@shared/const';
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
