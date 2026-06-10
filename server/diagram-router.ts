@@ -163,6 +163,51 @@ EDGE RULES (critical — follow exactly):
       return parsed;
     }),
 
+  // Explain the current diagram using AI
+  explainDiagram: protectedProcedure
+    .input(
+      z.object({
+        nodes: z.array(z.object({ serviceId: z.string(), label: z.string() })),
+        edges: z.array(z.object({ from: z.number(), to: z.number(), label: z.string().optional() })),
+      })
+    )
+    .mutation(async ({ input }) => {
+      if (input.nodes.length === 0) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "No nodes to explain." });
+      }
+
+      const nodeList = input.nodes.map((n, i) => `${i}: ${n.label} (${n.serviceId})`).join("\n");
+      const edgeList = input.edges.map((e) => `${input.nodes[e.from]?.label} → ${input.nodes[e.to]?.label}${e.label ? ` (${e.label})` : ""}`).join("\n");
+
+      const systemPrompt = `You are an AWS Solutions Architect explaining an architecture diagram to someone studying for AWS certification.
+
+Given a list of AWS services (nodes) and their connections (edges), provide a clear, educational explanation structured as follows:
+
+1. **Architecture Summary** — 2-3 sentences describing what this architecture does and what pattern it follows (e.g. 3-tier web app, serverless API, microservices).
+2. **Service Breakdown** — For each service, one bullet point: what it does in THIS architecture and why it was chosen.
+3. **Data Flow** — A numbered step-by-step walkthrough of how a request flows through the system.
+4. **AWS Well-Architected Notes** — 2-3 brief notes on how this architecture addresses reliability, performance, or security.
+
+Keep the tone educational and concise. Use markdown formatting. Target audience: someone studying for SAA-C03 or CLF-C02.`;
+
+      const userMessage = `Nodes:\n${nodeList}\n\nConnections:\n${edgeList || "(no connections yet)"}`;
+
+      let raw: string;
+      try {
+        const response = await invokeLLM({
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userMessage },
+          ],
+        });
+        raw = (response.choices?.[0]?.message?.content as string) ?? "";
+      } catch {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "AI service unavailable" });
+      }
+
+      return { explanation: raw };
+    }),
+
   // Delete a diagram
   delete: protectedProcedure
     .input(z.object({ id: z.number() }))

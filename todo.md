@@ -421,3 +421,8 @@
 - [x] Add tRPC procedure diagram.generateFromDescription — calls LLM with user's plain-text architecture description, returns structured nodes/edges JSON
 - [x] Add AI description panel UI in DiagramBuilder (collapsible panel with textarea, Generate button, loading state)
 - [x] Place AI-generated nodes/edges onto the canvas automatically with logical positioning
+
+## Feature: AI Architecture Explainer Panel
+- [x] Add tRPC procedure diagram.explainDiagram — takes nodes/edges, returns markdown explanation with service summaries and architecture pattern
+- [x] Add collapsible right-side panel in DiagramBuilder that auto-opens after AI generation with the explanation
+- [x] Add manual "Explain" button in toolbar so user can trigger explanation anytime

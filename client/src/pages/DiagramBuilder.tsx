@@ -43,7 +43,12 @@ import {
   Sparkles,
   ChevronDown,
   ChevronUp,
+  BookOpen,
+  PanelRightOpen,
+  PanelRightClose,
 } from "lucide-react";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Streamdown } from "streamdown";
 
 // ─── Official AWS SVG icon URLs from icepanel.io (official AWS icon set) ───────
 const AWS_SERVICES = [
@@ -273,6 +278,8 @@ export default function DiagramBuilder() {
   const [loadDialogOpen, setLoadDialogOpen] = useState(false);
   const [aiPanelOpen, setAiPanelOpen] = useState(false);
   const [aiDescription, setAiDescription] = useState("");
+  const [explainerOpen, setExplainerOpen] = useState(false);
+  const [explanation, setExplanation] = useState<string | null>(null);
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const nodeIdCounter = useRef(1);
 
@@ -348,6 +355,12 @@ export default function DiagramBuilder() {
       setEdges(newEdges);
       setAiPanelOpen(false);
       toast.success(`Generated ${newNodes.length} services and ${newEdges.length} connections`);
+      // Auto-explain after generation
+      const nodeData = newNodes.map(n => ({ serviceId: (n.data as any).category === "General" ? (n.data as any).iconUrl : (n.data as any).iconUrl?.split("/").pop()?.replace(".svg", "").toLowerCase() ?? "ec2", label: (n.data as any).label as string }));
+      const edgeData = (data.edges as { from: number; to: number; label: string }[])
+        .filter(e => e.from !== e.to && e.from < newNodes.length && e.to < newNodes.length)
+        .map(e => ({ from: e.from, to: e.to, label: e.label || "" }));
+      explainMutation.mutate({ nodes: nodeData, edges: edgeData });
     },
     onError: (err) => toast.error(err.message || "Failed to generate diagram"),
   });
@@ -358,6 +371,25 @@ export default function DiagramBuilder() {
       toast.success("Diagram deleted");
     },
   });
+
+  const explainMutation = trpc.diagram.explainDiagram.useMutation({
+    onSuccess: (data) => {
+      setExplanation(data.explanation);
+      setExplainerOpen(true);
+    },
+    onError: (err) => toast.error(err.message || "Failed to explain diagram"),
+  });
+
+  const handleExplain = () => {
+    if (nodes.length === 0) { toast.error("Add some services to the canvas first"); return; }
+    const nodeData = nodes.map(n => ({ serviceId: (n.data as any).category === "General" ? (n.data as any).iconUrl : (n.data as any).iconUrl?.split("/").pop()?.replace(".svg", "").toLowerCase() ?? "ec2", label: (n.data as any).label as string }));
+    const edgeData = edges.map(e => {
+      const srcIdx = nodes.findIndex(n => n.id === e.source);
+      const tgtIdx = nodes.findIndex(n => n.id === e.target);
+      return { from: srcIdx, to: tgtIdx, label: (e.label as string) || "" };
+    }).filter(e => e.from >= 0 && e.to >= 0);
+    explainMutation.mutate({ nodes: nodeData, edges: edgeData });
+  };
 
   const onConnect = useCallback(
     (params: Connection) => setEdges((eds) => addEdge({
@@ -432,7 +464,7 @@ export default function DiagramBuilder() {
   }, [searchQuery, activeCategory]);
 
   return (
-    <div className="flex h-screen bg-gray-950 text-white overflow-hidden" style={{ height: "calc(100vh - 64px)" }}>
+    <div className="flex h-screen bg-gray-950 text-white overflow-hidden" style={{ height: "calc(100vh - 64px)", position: "relative" }}>
       {/* ── Service Palette ── */}
       <div
         className={`flex flex-col border-r border-gray-800 bg-gray-900 transition-all duration-300 ${paletteOpen ? "w-60" : "w-10"}`}
@@ -595,6 +627,18 @@ export default function DiagramBuilder() {
             <span className="text-xs text-gray-500">{nodes.length} nodes · {edges.length} connections</span>
             <Button
               size="sm"
+              onClick={handleExplain}
+              disabled={explainMutation.isPending || nodes.length === 0}
+              className="h-7 gap-1 text-xs bg-emerald-700 hover:bg-emerald-600 text-white"
+            >
+              {explainMutation.isPending ? (
+                <span className="flex items-center gap-1"><span className="animate-spin inline-block w-3 h-3 border-2 border-white border-t-transparent rounded-full" />Explaining...</span>
+              ) : (
+                <><BookOpen size={12} /> Explain</>  
+              )}
+            </Button>
+            <Button
+              size="sm"
               onClick={() => setAiPanelOpen(p => !p)}
               className="h-7 gap-1 text-xs bg-violet-600 hover:bg-violet-700 text-white"
             >
@@ -602,6 +646,16 @@ export default function DiagramBuilder() {
               AI Generate
               {aiPanelOpen ? <ChevronUp size={10} /> : <ChevronDown size={10} />}
             </Button>
+            {explanation && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setExplainerOpen(p => !p)}
+                className="h-7 gap-1 text-xs border-emerald-700 text-emerald-400 hover:bg-emerald-900/30"
+              >
+                {explainerOpen ? <PanelRightClose size={12} /> : <PanelRightOpen size={12} />}
+              </Button>
+            )}
           </div>
         </div>
 
@@ -641,7 +695,8 @@ export default function DiagramBuilder() {
           </div>
         )}
 
-        {/* React Flow Canvas */}
+        {/* React Flow Canvas + Explainer Panel */}
+        <div className="flex flex-1 overflow-hidden">
         <div className="flex-1" ref={reactFlowWrapper}>
           <ReactFlow
             nodes={nodes}
@@ -676,6 +731,46 @@ export default function DiagramBuilder() {
               )}
             </Panel>
           </ReactFlow>
+        </div>
+
+        {/* ── AI Explainer Side Panel ── */}
+        {explainerOpen && explanation && (
+          <div
+            className="flex flex-col border-l border-gray-700 bg-gray-900"
+            style={{ width: 340, minWidth: 280, maxWidth: 400 }}
+          >
+            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-700">
+              <div className="flex items-center gap-2">
+                <BookOpen size={14} className="text-emerald-400" />
+                <span className="text-sm font-semibold text-white">Architecture Explainer</span>
+              </div>
+              <button
+                onClick={() => setExplainerOpen(false)}
+                className="p-1 rounded hover:bg-gray-700 text-gray-400 hover:text-white"
+              >
+                <X size={14} />
+              </button>
+            </div>
+            <ScrollArea className="flex-1 px-4 py-3">
+              <div className="prose prose-sm prose-invert max-w-none text-gray-200 text-xs leading-relaxed">
+                <Streamdown>{explanation}</Streamdown>
+              </div>
+            </ScrollArea>
+            <div className="px-4 py-2 border-t border-gray-700">
+              <button
+                onClick={handleExplain}
+                disabled={explainMutation.isPending}
+                className="w-full text-xs text-emerald-400 hover:text-emerald-300 flex items-center justify-center gap-1.5 py-1.5 rounded hover:bg-emerald-900/20 transition-colors disabled:opacity-50"
+              >
+                {explainMutation.isPending ? (
+                  <><span className="animate-spin inline-block w-3 h-3 border-2 border-emerald-400 border-t-transparent rounded-full" />Re-explaining...</>
+                ) : (
+                  <><Sparkles size={11} />Re-explain current diagram</>
+                )}
+              </button>
+            </div>
+          </div>
+        )}
         </div>
       </div>
     </div>
