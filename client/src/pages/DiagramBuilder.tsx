@@ -328,11 +328,23 @@ export default function DiagramBuilder() {
         } as Node & { _aiIndex: number };
       });
 
+      // Monitoring service IDs — their edges should always point FROM monitoring TO compute
+      const MONITORING_IDS = new Set(["cloudwatch", "cloudtrail", "xray", "config", "guardduty"]);
+
       const newEdges: Edge[] = data.edges
         .filter(e => e.from !== e.to && e.from < newNodes.length && e.to < newNodes.length)
         .map((e, i) => {
-          const srcNode = newNodes[e.from];
-          const tgtNode = newNodes[e.to];
+          // Auto-correct: if the source is a compute node and target is a monitoring node,
+          // flip the edge so monitoring is always the source (arrow points FROM monitoring TO compute)
+          const srcServiceId = data.nodes[e.from]?.serviceId ?? "";
+          const tgtServiceId = data.nodes[e.to]?.serviceId ?? "";
+          const srcIsMonitoring = MONITORING_IDS.has(srcServiceId);
+          const tgtIsMonitoring = MONITORING_IDS.has(tgtServiceId);
+          // If target is monitoring and source is not, flip the edge
+          const from = (!srcIsMonitoring && tgtIsMonitoring) ? e.to : e.from;
+          const to = (!srcIsMonitoring && tgtIsMonitoring) ? e.from : e.to;
+          const srcNode = newNodes[from];
+          const tgtNode = newNodes[to];
           // Pick source/target handles based on relative positions to avoid top-routing
           const srcX = srcNode.position.x;
           const tgtX = tgtNode.position.x;
