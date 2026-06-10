@@ -46,7 +46,9 @@ import {
   BookOpen,
   PanelRightOpen,
   PanelRightClose,
+  ArrowLeft,
 } from "lucide-react";
+import { useLocation } from "wouter";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Streamdown } from "streamdown";
 
@@ -270,6 +272,7 @@ const nodeTypes: NodeTypes = {
 export default function DiagramBuilder() {
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
+  const [, setLocation] = useLocation();
   const [diagramName, setDiagramName] = useState("Untitled Diagram");
   const [currentDiagramId, setCurrentDiagramId] = useState<number | null>(null);
   const [paletteOpen, setPaletteOpen] = useState(true);
@@ -576,6 +579,15 @@ export default function DiagramBuilder() {
       <div className="flex-1 flex flex-col">
         {/* Toolbar */}
         <div className="flex items-center gap-2 px-4 py-2 border-b border-gray-800 bg-gray-900">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setLocation("/dashboard")}
+            className="h-7 gap-1 text-xs border-gray-700 bg-transparent text-gray-400 hover:text-white hover:bg-gray-800 flex-shrink-0"
+          >
+            <ArrowLeft size={12} /> Dashboard
+          </Button>
+          <div className="w-px h-4 bg-gray-700 mx-1 flex-shrink-0" />
           <Input
             value={diagramName}
             onChange={e => setDiagramName(e.target.value)}
